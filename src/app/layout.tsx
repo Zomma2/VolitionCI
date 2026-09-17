@@ -18,11 +18,11 @@ export const metadata: Metadata = {
     "Autonomous repository analysis, interactive architectural interrogation, and self-healing CI/CD, Terraform, and Kubernetes pipeline generator.",
   icons: {
     icon: [
-      { url: "/icon.png?v=3", type: "image/png" },
-      { url: "/logo.png?v=3", type: "image/png" },
+      { url: "/icon.png?v=4", type: "image/png" },
+      { url: "/logo.png?v=4", type: "image/png" },
     ],
-    shortcut: "/icon.png?v=3",
-    apple: "/apple-icon.png?v=3",
+    shortcut: "/icon.png?v=4",
+    apple: "/apple-icon.png?v=4",
   },
 };
 
@@ -32,8 +32,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/icon.png?v=3" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-icon.png?v=3" />
+        <link rel="icon" href="/icon.png?v=4" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png?v=4" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}

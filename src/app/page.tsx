@@ -25,18 +25,14 @@ export default function Home() {
         <div className="max-w-screen-xl mx-auto px-6">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div 
-                className="w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden p-1 bg-white/[0.04] border border-white/[0.08]"
-                style={{ 
-                  boxShadow: "0 0 20px rgb(124 58 237 / 0.3)"
-                }}
-              >
+              <div className="relative flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-md" />
                 <Image 
                   src={logoImg} 
                   alt="VolitionCI Logo" 
-                  width={28} 
-                  height={28} 
-                  className="object-contain"
+                  width={30} 
+                  height={30} 
+                  className="relative object-contain drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]"
                   priority
                 />
               </div>
@@ -67,17 +63,18 @@ export default function Home() {
       </header>
 
       <div className="flex-shrink-0 relative z-10 pt-10 pb-8 text-center px-6">
-        <div className="inline-flex items-center justify-center mb-4">
-          <div className="relative p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] shadow-[0_0_35px_rgba(124,58,237,0.25)]">
-            <Image
-              src={logoImg}
-              alt="VolitionCI"
-              width={56}
-              height={56}
-              className="w-14 h-14 object-contain"
-              priority
-            />
-          </div>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] shadow-[0_0_30px_rgba(124,58,237,0.15)] mb-6 hover:border-white/[0.14] transition-colors">
+          <Image
+            src={logoImg}
+            alt="VolitionCI"
+            width={16}
+            height={16}
+            className="object-contain drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]"
+            priority
+          />
+          <span className="text-xs font-medium text-white/70">
+            Autonomous Delivery &amp; Cloud Infrastructure
+          </span>
         </div>
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] text-white">
           Agentic DevSecOps <br/>
@@ -98,8 +95,8 @@ export default function Home() {
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />
         <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image src={logoImg} alt="VolitionCI" width={14} height={14} className="object-contain opacity-40" />
-            <span className="text-[11px] text-white/20">
+            <Image src={logoImg} alt="VolitionCI" width={14} height={14} className="object-contain opacity-50" />
+            <span className="text-[11px] text-white/25">
               VolitionCI &copy; {new Date().getFullYear()}
             </span>
           </div>
