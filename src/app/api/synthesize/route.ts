@@ -24,11 +24,86 @@ import {
   DOCKER_HEALING_USER_PROMPT,
 } from "@/lib/prompts/dockerPrompts";
 
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-// Limit max_tokens to 1000 to respect free-tier OTPM limits on qwen and gpt-oss-120b
-const MODEL = "openai/gpt-oss-120b";
-const VALIDATOR_MODEL = "openai/gpt-oss-20b";
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+// Groq Fallbacks
+const GROQ_WORKER_MODEL = "openai/gpt-oss-120b";
+const GROQ_VALIDATOR_MODEL = "openai/gpt-oss-20b";
+
+// Gemini Primary Models
+const GEMINI_PLANNER = "models/antigravity-preview-09-2026";
+const GEMINI_WORKER = "models/deep-research-max-preview-04-2026"; 
+const GEMINI_VALIDATOR = "models/antigravity-preview-09-2026";
+
 const MAX_RETRIES = 3;
+
+async function runModelWithFallback(
+  role: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number,
+  primaryModel: string,
+  fallbackModel: string,
+  sendEvent: Function
+) {
+  try {
+    const model = genAI.getGenerativeModel({ 
+      model: primaryModel,
+      systemInstruction: systemPrompt 
+    });
+    
+    const startTime = Date.now();
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.15 }
+    });
+    const content = result.response.text();
+    const elapsed = (Date.now() - startTime) / 1000;
+    
+    const usage = result.response.usageMetadata;
+    
+    sendEvent("usage", {
+      model: primaryModel.replace("models/", ""),
+      role: role + " (Primary)",
+      usage: {
+        prompt_tokens: usage?.promptTokenCount || 0,
+        completion_tokens: usage?.candidatesTokenCount || 0,
+        total_tokens: usage?.totalTokenCount || 0,
+        total_time: elapsed
+      }
+    });
+    
+    return content;
+  } catch (err: any) {
+    console.error(`Gemini failed for ${role}, falling back to Groq:`, err?.message || err);
+    
+    const startTime = Date.now();
+    const completion = await groq.chat.completions.create({
+      model: fallbackModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.15,
+      max_tokens: maxTokens
+    });
+    const elapsed = (Date.now() - startTime) / 1000;
+    
+    const usage: any = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    usage.total_time = elapsed;
+    
+    sendEvent("usage", {
+      model: fallbackModel,
+      role: role + " (Fallback)",
+      usage: usage
+    });
+    
+    return completion.choices[0]?.message?.content || "";
+  }
+}
 
 export async function POST(req: NextRequest) {
   let body;
@@ -81,24 +156,19 @@ export async function POST(req: NextRequest) {
         // ── Phase 1: Planning (Modular Breakdown) ──
         sendEvent("status", { step: "planning" });
         try {
-          const plannerCompletion = await groq.chat.completions.create({
-            model: VALIDATOR_MODEL,
-            messages: [
-              {
-                role: "system",
-                content: `You are an Infrastructure Planner. The user wants to deploy a ${archetype} architecture. Break the deployment down into 2 to 5 logical code modules (e.g., ["Provider Settings", "Networking", "Compute", "Database"]). Output strictly a JSON object with the format: {"plan": ["module1", "module2", ...]}. Do NOT use markdown formatting (\`\`\`json). Do NOT add any explanations.`
-              },
-              {
-                role: "user",
-                content: `Context: ${repoContext}\nProvider: ${provider}\nAnswers: ${JSON.stringify(userAnswers)}`
-              }
-            ],
-            temperature: 0.1,
-            max_tokens: 400,
-          });
+          const systemPrompt = `You are an Infrastructure Planner. The user wants to deploy a ${archetype} architecture. Break the deployment down into 2 to 5 logical code modules (e.g., ["Provider Settings", "Networking", "Compute", "Database"]). Output strictly a JSON object with the format: {"plan": ["module1", "module2", ...]}. Do NOT use markdown formatting (\`\`\`json). Do NOT add any explanations.`;
+          const userPrompt = `Context: ${repoContext}\nProvider: ${provider}\nAnswers: ${JSON.stringify(userAnswers)}`;
 
-          sendEvent("usage", { model: VALIDATOR_MODEL, role: "Planner", usage: plannerCompletion.usage });
-          const rawContent = plannerCompletion.choices[0]?.message?.content || "{}";
+          const rawContent = await runModelWithFallback(
+            "Planner",
+            systemPrompt,
+            userPrompt,
+            400,
+            GEMINI_PLANNER,
+            GROQ_VALIDATOR_MODEL,
+            sendEvent
+          );
+
           const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
           const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : "{}");
           
@@ -129,30 +199,20 @@ export async function POST(req: NextRequest) {
               ? initialUserPrompt 
               : `Generate ONLY the specific code for this module: "${chunkName}". Do NOT generate the entire architecture. Do NOT use markdown fences. Output raw code.\n\nContext: ${repoContext}\nAnswers: ${JSON.stringify(userAnswers)}\n\nPreviously Generated Code (Reference IDs/variables from here):\n${finalOutput || "None"}`;
 
-            const currentMessages = chunkAttempt === 0 
-              ? [
-                  { role: "system" as const, content: initialSystemPrompt }, 
-                  { role: "user" as const, content: basePrompt }
-                ]
-              : [
-                  { role: "system" as const, content: healingSystemPrompt },
-                  { role: "user" as const, content: healingUserPromptFn(chunkOutput, finalErrors) }
-                ];
+            const sysPrompt = chunkAttempt === 0 ? initialSystemPrompt : healingSystemPrompt;
+            const usrPrompt = chunkAttempt === 0 ? basePrompt : healingUserPromptFn(chunkOutput, finalErrors);
 
-            const completion = await groq.chat.completions.create({
-              model: MODEL,
-              messages: currentMessages,
-              temperature: 0.15,
-              max_tokens: 1000, 
-            });
+            const rawContent = await runModelWithFallback(
+              `Worker (${chunkName})`,
+              sysPrompt,
+              usrPrompt,
+              1000,
+              GEMINI_WORKER,
+              GROQ_WORKER_MODEL,
+              sendEvent
+            );
 
-            sendEvent("usage", {
-              model: MODEL,
-              role: `Worker (${chunkName})`,
-              usage: completion.usage,
-            });
-
-            chunkOutput = sanitizeOutput(completion.choices[0]?.message?.content ?? "", archetype);
+            chunkOutput = sanitizeOutput(rawContent, archetype);
 
             sendEvent("status", { step: "validating" });
             
@@ -180,29 +240,20 @@ export async function POST(req: NextRequest) {
         // ── Phase 3: Semantic Validation ──
         if (isValid) {
           sendEvent("status", { step: "semantic_validation" });
-          const validatorCompletion = await groq.chat.completions.create({
-            model: VALIDATOR_MODEL,
-            messages: [
-              {
-                role: "system",
-                content: "You are an elite Semantic Validator. Ensure the generated code explicitly declares resources for ALL components requested by the user. If any requested module/service is missing, respond exactly with 'MISSING: <details>'. If all requested components exist, respond exactly with 'VALID'. Do not explain."
-              },
-              {
-                role: "user",
-                content: `Requested Context:\n${repoContext}\n\nUser Answers:\n${JSON.stringify(userAnswers, null, 2)}\n\nGenerated Code:\n${currentOutput}`
-              }
-            ],
-            temperature: 0.1,
-            max_tokens: 300,
-          });
+          const sysPrompt = "You are an elite Semantic Validator. Ensure the generated code explicitly declares resources for ALL components requested by the user. If any requested module/service is missing, respond exactly with 'MISSING: <details>'. If all requested components exist, respond exactly with 'VALID'. Do not explain.";
+          const usrPrompt = `Requested Context:\n${repoContext}\n\nUser Answers:\n${JSON.stringify(userAnswers, null, 2)}\n\nGenerated Code:\n${currentOutput}`;
 
-          sendEvent("usage", {
-            model: VALIDATOR_MODEL,
-            role: "Semantic Validator",
-            usage: validatorCompletion.usage,
-          });
+          const rawContent = await runModelWithFallback(
+            "Semantic Validator",
+            sysPrompt,
+            usrPrompt,
+            300,
+            GEMINI_VALIDATOR,
+            GROQ_VALIDATOR_MODEL,
+            sendEvent
+          );
 
-          const valResult = (validatorCompletion.choices[0]?.message?.content || "").trim();
+          const valResult = rawContent.trim();
           if (!valResult.startsWith("VALID")) {
             finalErrors.push(`Semantic Validation Failed: ${valResult}`);
             isValid = false;
