@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWizardStore, Archetype } from "@/store/useWizardStore";
-import { ArrowRight, Globe, Search, Grip, Check, Layers, Server, Cpu, Box } from "lucide-react";
+import { ArrowRight, Globe, Search, Grip, Check, Layers, Server, Cpu, Box, MessageSquare } from "lucide-react";
 
 const ARCHETYPE_OPTIONS: { id: Archetype; title: string; subtitle: string; icon: any }[] = [
   { 
@@ -169,10 +169,22 @@ const getTechOptions = (archetype: Archetype, platform: string) => {
 
 export default function Step1Ingest() {
   const { archetype, targetPlatform, setArchetype, setTargetPlatform, setRepoData, setStatus, setStep, setInterrogationData } = useWizardStore();
-  const [mode, setMode] = useState<"scan" | "manual">("scan");
+  const [mode, setMode] = useState<"scan" | "manual" | "chat">("chat");
   const [url, setUrl] = useState("");
   const [selectedTech, setSelectedTech] = useState<string[]>([]);
   const [error, setError] = useState("");
+  
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "ai", content: string }[]>([]);
+  const [chatRevisions, setChatRevisions] = useState(0);
+  const [chatConfig, setChatConfig] = useState<{
+    repoUrl?: string;
+    archetype?: Archetype;
+    targetPlatform?: string;
+    technologies?: string[];
+    recommendations?: { name: string; slug: string; color: string; reason: string }[];
+  } | null>(null);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   const currentPlatformConfig = PLATFORM_CONFIG[archetype];
 
@@ -186,6 +198,66 @@ export default function Step1Ingest() {
     setSelectedTech(prev => 
       prev.includes(name) ? prev.filter(t => t !== name) : [...prev, name]
     );
+  };
+
+  const handleChatSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim() || chatRevisions >= 2) return;
+
+    const newHistory: any = [...chatHistory, { role: "user", content: chatInput }];
+    setChatHistory(newHistory);
+    setChatInput("");
+    setIsChatLoading(true);
+    
+    try {
+      const res = await fetch("/api/chat-builder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: newHistory, currentConfig: chatConfig })
+      });
+      const data = await res.json();
+      if (data.config) {
+        setChatConfig(data.config);
+        if (data.config.archetype) setArchetype(data.config.archetype);
+        if (data.config.targetPlatform) setTargetPlatform(data.config.targetPlatform);
+        if (data.config.repoUrl) setUrl(data.config.repoUrl);
+        if (data.config.technologies) {
+           setSelectedTech(prev => Array.from(new Set([...prev, ...data.config.technologies])));
+        }
+      }
+      setChatHistory([...newHistory, { role: "ai", content: data.reply }]);
+      setChatRevisions(prev => prev + 1);
+    } catch (err) {
+      setChatHistory([...newHistory, { role: "ai", content: "Sorry, I failed to process that request." }]);
+    }
+    setIsChatLoading(false);
+  };
+
+  const proceedFromChat = async () => {
+    if (!chatConfig) return;
+    setRepoData(chatConfig.repoUrl || "AI Chat Config", "");
+    setStep(2);
+    setStatus("analyzing");
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repoUrl: chatConfig.repoUrl || undefined,
+          manualStack: selectedTech,
+          archetype: chatConfig.archetype || archetype,
+          targetPlatform: chatConfig.targetPlatform || targetPlatform,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to analyze repository");
+      const data = await res.json();
+      setRepoData(chatConfig.repoUrl || "AI Chat Config", data.repoContext);
+      setInterrogationData(data.detectedStack, data.questions);
+      setStatus("idle");
+      setStep(3);
+    } catch (err: any) {
+      setStatus("error", err.message || "Failed to analyze repository");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -272,8 +344,16 @@ export default function Step1Ingest() {
         </div>
       </div>
 
-      {/* ── Mode Selection: Scan vs Manual ── */}
+
+      {/* ── Mode Selection: Scan vs Manual vs Chat ── */}
       <div className="flex bg-white/[0.04] p-1 rounded-xl shrink-0">
+        <button
+          type="button"
+          onClick={() => { setMode("chat"); setError(""); }}
+          className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${mode === "chat" ? "bg-white/10 text-white shadow" : "text-white/40 hover:text-white/70"}`}
+        >
+          <MessageSquare size={13} /> AI Builder
+        </button>
         <button
           type="button"
           onClick={() => { setMode("scan"); setError(""); }}
@@ -290,93 +370,179 @@ export default function Step1Ingest() {
         </button>
       </div>
 
-      {/* ── Form Body ── */}
-      <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-hidden flex flex-col min-h-0">
-        {/* ── Dynamic Target Platform Dropdown ── */}
-        <div className="space-y-2 shrink-0">
-          <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
-            {currentPlatformConfig.label}
-          </label>
-          <select
-            value={targetPlatform}
-            onChange={(e) => {
-              setTargetPlatform(e.target.value);
-              setSelectedTech([]); // Clear selection when platform changes
-            }}
-            className="w-full appearance-none bg-white/[0.04] border border-white/[0.07] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-violet-500/60 focus:bg-white/[0.06] transition-all"
-            style={{ colorScheme: "dark" }}
-          >
-            {currentPlatformConfig.options.map((opt) => (
-              <option key={opt} value={opt} className="bg-slate-900">{opt}</option>
+      {mode === "chat" ? (
+        <div className="flex-1 flex flex-col min-h-0 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pb-2 text-xs">
+            {chatHistory.length === 0 && (
+               <div className="text-white/40 text-center mt-10">
+                 Describe what you want to build.<br/><br/>e.g., "I need a GitHub Actions pipeline for a Next.js and Prisma app"
+               </div>
+            )}
+            {chatHistory.map((msg, idx) => (
+               <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                 <div className={`p-2.5 rounded-xl max-w-[90%] ${msg.role === "user" ? "bg-violet-600/20 text-white border border-violet-500/20" : "bg-white/[0.04] text-white/80 border border-white/[0.05]"}`}>
+                   {msg.content}
+                 </div>
+               </div>
             ))}
-          </select>
+            
+            {chatConfig && (
+              <div className="mt-4 p-3 bg-white/[0.02] border border-violet-500/20 rounded-xl space-y-3">
+                <div className="font-semibold text-violet-300 text-sm">Configuration Draft</div>
+                
+                <div className="space-y-1 bg-black/20 p-2 rounded-lg border border-white/5">
+                   <div className="text-white/50 text-[11px]">Target: <span className="text-white font-medium">{chatConfig.archetype} ({chatConfig.targetPlatform})</span></div>
+                   {chatConfig.repoUrl && <div className="text-white/50 text-[11px]">Repo: <span className="text-white font-medium">{chatConfig.repoUrl}</span></div>}
+                </div>
+                
+                <div className="flex flex-wrap gap-1.5">
+                  {chatConfig.technologies?.map(tech => (
+                     <div key={tech} className="flex items-center gap-1.5 px-2 py-1 bg-violet-500/10 text-violet-200 rounded-md border border-violet-500/20">
+                       <Check size={10} /> {tech}
+                     </div>
+                  ))}
+                </div>
+                
+                {chatConfig.recommendations && chatConfig.recommendations.length > 0 && (
+                  <div className="pt-2 border-t border-white/[0.05] space-y-2">
+                    <div className="font-semibold text-white/70 text-[10px] uppercase tracking-wider">AI Recommendations</div>
+                    {chatConfig.recommendations.map(rec => {
+                       const isAdded = selectedTech.includes(rec.name);
+                       return (
+                         <div key={rec.name} className="flex items-start gap-2.5 p-2 bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-white/[0.05] rounded-lg">
+                            <button onClick={() => toggleTech(rec.name)} className={`mt-0.5 shrink-0 w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${isAdded ? 'bg-violet-500 border-violet-500' : 'border-white/20'}`}>
+                               {isAdded && <Check size={10} className="text-white" />}
+                            </button>
+                            <img src={`https://cdn.simpleicons.org/${rec.slug}/${rec.color}`} width={16} height={16} className="mt-0.5 opacity-90" alt={rec.name} />
+                            <div>
+                               <div className="font-medium text-white/90 text-xs">{rec.name}</div>
+                               <div className="text-[10px] text-white/50 leading-snug mt-0.5">{rec.reason}</div>
+                            </div>
+                         </div>
+                       );
+                    })}
+                  </div>
+                )}
+                
+              </div>
+            )}
+            
+            {isChatLoading && <div className="text-violet-400 animate-pulse text-[10px] pl-2">AI Architect is thinking...</div>}
+          </div>
+          
+          <div className="shrink-0 pt-3 border-t border-white/[0.05] flex gap-2">
+            <input 
+              type="text"
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              placeholder={chatRevisions >= 2 ? "Max revisions reached." : "Type your requirements..."}
+              disabled={chatRevisions >= 2 || isChatLoading}
+              onKeyDown={e => e.key === "Enter" && handleChatSubmit(e as any)}
+              className="flex-1 bg-white/[0.04] border border-white/[0.07] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-violet-500/60 transition-all disabled:opacity-50"
+            />
+            <button onClick={handleChatSubmit as any} disabled={chatRevisions >= 2 || isChatLoading} className="px-3.5 bg-violet-600 rounded-xl text-white hover:bg-violet-500 disabled:opacity-50 transition-colors flex items-center justify-center">
+              <ArrowRight size={14} />
+            </button>
+          </div>
+          
+          {chatConfig && (
+            <button
+              type="button"
+              onClick={proceedFromChat}
+              className="mt-3 shrink-0 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity"
+            >
+               Proceed to Analysis <ArrowRight size={14} />
+            </button>
+          )}
         </div>
-
-        {mode === "scan" ? (
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-hidden flex flex-col min-h-0">
+          {/* ── Dynamic Target Platform Dropdown ── */}
           <div className="space-y-2 shrink-0">
             <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
-              GitHub Repository URL
+              {currentPlatformConfig.label}
             </label>
-            <div className="relative">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://github.com/facebook/react"
-                className="w-full bg-white/[0.04] border border-white/[0.07] text-white text-xs rounded-xl px-9 py-2.5 placeholder-white/20 focus:outline-none focus:border-violet-500/60 focus:bg-white/[0.06] transition-all"
-                required={mode === "scan"}
-              />
-              <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-            </div>
-            {error && <p className="text-xs text-red-400">{error}</p>}
+            <select
+              value={targetPlatform}
+              onChange={(e) => {
+                setTargetPlatform(e.target.value);
+                setSelectedTech([]);
+              }}
+              className="w-full appearance-none bg-white/[0.04] border border-white/[0.07] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-violet-500/60 focus:bg-white/[0.06] transition-all"
+              style={{ colorScheme: "dark" }}
+            >
+              {currentPlatformConfig.options.map((opt) => (
+                <option key={opt} value={opt} className="bg-slate-900">{opt}</option>
+              ))}
+            </select>
           </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-[120px]">
-            <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block mb-2">
-              Select Technologies
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {getTechOptions(archetype, targetPlatform).map((tech) => {
-                const isSelected = selectedTech.includes(tech.name);
-                return (
-                  <button
-                    key={tech.id}
-                    type="button"
-                    onClick={() => toggleTech(tech.name)}
-                    className={`relative p-2 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all ${
-                      isSelected 
-                        ? "bg-violet-500/10 border-violet-500/40 text-violet-100" 
-                        : "bg-white/[0.02] border-white/[0.05] text-white/60 hover:bg-white/[0.06] hover:border-white/[0.1]"
-                    }`}
-                  >
-                    {isSelected && (
-                      <div className="absolute top-1 right-1 w-3.5 h-3.5 bg-violet-500 rounded-full flex items-center justify-center">
-                        <Check size={8} className="text-white" />
-                      </div>
-                    )}
-                    <img 
-                      src={tech.customUrl || `https://cdn.simpleicons.org/${tech.slug}/${tech.whiteInvert ? "white" : tech.color}`} 
-                      alt={tech.name}
-                      width={20}
-                      height={20}
-                      className={`opacity-80 transition-opacity ${isSelected ? "opacity-100" : ""}`}
-                    />
-                    <span className="text-[11px] font-medium truncate max-w-full">{tech.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
-          </div>
-        )}
 
-        <button
-          type="submit"
-          className="shrink-0 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-transparent"
-        >
-          Proceed to Analysis <ArrowRight size={14} />
-        </button>
-      </form>
+          {mode === "scan" ? (
+            <div className="space-y-2 shrink-0">
+              <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
+                GitHub Repository URL
+              </label>
+              <div className="relative">
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://github.com/facebook/react"
+                  className="w-full bg-white/[0.04] border border-white/[0.07] text-white text-xs rounded-xl px-9 py-2.5 placeholder-white/20 focus:outline-none focus:border-violet-500/60 focus:bg-white/[0.06] transition-all"
+                  required={mode === "scan"}
+                />
+                <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              </div>
+              {error && <p className="text-xs text-red-400">{error}</p>}
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-[120px]">
+              <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block mb-2">
+                Select Technologies
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {getTechOptions(archetype, targetPlatform).map((tech) => {
+                  const isSelected = selectedTech.includes(tech.name);
+                  return (
+                    <button
+                      key={tech.id}
+                      type="button"
+                      onClick={() => toggleTech(tech.name)}
+                      className={`relative p-2 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all ${
+                        isSelected 
+                          ? "bg-violet-500/10 border-violet-500/40 text-violet-100" 
+                          : "bg-white/[0.02] border-white/[0.05] text-white/60 hover:bg-white/[0.06] hover:border-white/[0.1]"
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 w-3.5 h-3.5 bg-violet-500 rounded-full flex items-center justify-center">
+                          <Check size={8} className="text-white" />
+                        </div>
+                      )}
+                      <img 
+                        src={tech.customUrl || `https://cdn.simpleicons.org/${tech.slug}/${tech.whiteInvert ? "white" : tech.color}`} 
+                        alt={tech.name}
+                        width={20}
+                        height={20}
+                        className={`opacity-80 transition-opacity ${isSelected ? "opacity-100" : ""}`}
+                      />
+                      <span className="text-[11px] font-medium truncate max-w-full">{tech.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="shrink-0 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-transparent"
+          >
+            Proceed to Analysis <ArrowRight size={14} />
+          </button>
+        </form>
+      )}
     </div>
   );
 }
