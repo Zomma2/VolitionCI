@@ -43,24 +43,54 @@ const PLATFORM_CONFIG: Record<Archetype, { label: string; options: string[]; def
   },
 };
 
-const TECH_OPTIONS = [
-  { id: "react", name: "React", slug: "react", color: "61DAFB" },
-  { id: "nextjs", name: "Next.js", slug: "nextdotjs", color: "000000", whiteInvert: true },
-  { id: "node", name: "Node.js", slug: "nodedotjs", color: "339933" },
-  { id: "python", name: "Python", slug: "python", color: "3776AB" },
-  { id: "go", name: "Go", slug: "go", color: "00ADD8" },
-  { id: "java", name: "Java", slug: "java", color: "ED8B00", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" },
-  { id: "postgres", name: "PostgreSQL", slug: "postgresql", color: "4169E1" },
-  { id: "mysql", name: "MySQL", slug: "mysql", color: "4479A1" },
-  { id: "mongo", name: "MongoDB", slug: "mongodb", color: "47A248" },
-  { id: "redis", name: "Redis", slug: "redis", color: "DC382D" },
-  { id: "docker", name: "Docker", slug: "docker", color: "2496ED" },
-  { id: "k8s", name: "Kubernetes", slug: "kubernetes", color: "326CE5" },
-  { id: "aws", name: "AWS", slug: "amazonwebservices", color: "232F3E", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
-  { id: "gcp", name: "GCP", slug: "googlecloud", color: "4285F4" },
-  { id: "azure", name: "Azure", slug: "microsoftazure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
-  { id: "terraform", name: "Terraform", slug: "terraform", color: "844FBA" }
-];
+const TECH_OPTIONS_MAP: Record<Archetype, { id: string; name: string; slug: string; color: string; whiteInvert?: boolean; customUrl?: string }[]> = {
+  pipeline: [
+    { id: "react", name: "React", slug: "react", color: "61DAFB" },
+    { id: "nextjs", name: "Next.js", slug: "nextdotjs", color: "000000", whiteInvert: true },
+    { id: "node", name: "Node.js", slug: "nodedotjs", color: "339933" },
+    { id: "python", name: "Python", slug: "python", color: "3776AB" },
+    { id: "go", name: "Go", slug: "go", color: "00ADD8" },
+    { id: "java", name: "Java", slug: "java", color: "ED8B00", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" },
+    { id: "postgres", name: "PostgreSQL", slug: "postgresql", color: "4169E1" },
+    { id: "mysql", name: "MySQL", slug: "mysql", color: "4479A1" },
+    { id: "mongo", name: "MongoDB", slug: "mongodb", color: "47A248" },
+    { id: "redis", name: "Redis", slug: "redis", color: "DC382D" },
+    { id: "docker", name: "Docker", slug: "docker", color: "2496ED" },
+    { id: "k8s", name: "Kubernetes", slug: "kubernetes", color: "326CE5" },
+    { id: "aws", name: "AWS", slug: "amazonwebservices", color: "232F3E", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
+    { id: "gcp", name: "GCP", slug: "googlecloud", color: "4285F4" },
+    { id: "azure", name: "Azure", slug: "microsoftazure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+    { id: "terraform", name: "Terraform", slug: "terraform", color: "844FBA" }
+  ],
+  terraform: [
+    { id: "aws", name: "AWS", slug: "amazonwebservices", color: "232F3E", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
+    { id: "s3", name: "AWS S3", slug: "amazons3", color: "569A31", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "dynamodb", name: "DynamoDB", slug: "amazondynamodb", color: "4053D6", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "vpc", name: "AWS VPC", slug: "amazonvpc", color: "7AA116", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "ecs", name: "AWS ECS", slug: "amazonecs", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "eks", name: "AWS EKS", slug: "amazoneks", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "iam", name: "AWS IAM", slug: "amazoniam", color: "DD344C", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "azure", name: "Azure", slug: "microsoftazure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+    { id: "azureblob", name: "Azure Blob", slug: "azure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+    { id: "gcp", name: "GCP", slug: "googlecloud", color: "4285F4" },
+    { id: "terraform", name: "Terraform", slug: "terraform", color: "844FBA" },
+    { id: "docker", name: "Docker", slug: "docker", color: "2496ED" }
+  ],
+  kubernetes: [
+    { id: "k8s", name: "Kubernetes", slug: "kubernetes", color: "326CE5" },
+    { id: "helm", name: "Helm", slug: "helm", color: "0F1689" },
+    { id: "kustomize", name: "Kustomize", slug: "kustomize", color: "326CE5" },
+    { id: "nginx", name: "Ingress-Nginx", slug: "nginx", color: "009639" },
+    { id: "traefik", name: "Traefik", slug: "traefikmesh", color: "24A1C1" },
+    { id: "prometheus", name: "Prometheus", slug: "prometheus", color: "E6522C" },
+    { id: "grafana", name: "Grafana", slug: "grafana", color: "F46800" },
+    { id: "istio", name: "Istio", slug: "istio", color: "466BB0" },
+    { id: "linkerd", name: "Linkerd", slug: "linkerd", color: "17203A" },
+    { id: "certmanager", name: "Cert-Manager", slug: "letsecnrypt", color: "003A70", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" },
+    { id: "argo", name: "ArgoCD", slug: "argo", color: "EF7B4D" },
+    { id: "docker", name: "Docker", slug: "docker", color: "2496ED" }
+  ]
+};
 
 export default function Step1Ingest() {
   const { archetype, targetPlatform, setArchetype, setTargetPlatform, setRepoData, setStatus, setStep, setInterrogationData } = useWizardStore();
@@ -74,6 +104,7 @@ export default function Step1Ingest() {
   const handleArchetypeChange = (newArchetype: Archetype) => {
     setArchetype(newArchetype);
     setTargetPlatform(PLATFORM_CONFIG[newArchetype].default);
+    setSelectedTech([]);
   };
 
   const toggleTech = (name: string) => {
@@ -210,7 +241,7 @@ export default function Step1Ingest() {
               Select Technologies
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {TECH_OPTIONS.map((tech) => {
+              {TECH_OPTIONS_MAP[archetype].map((tech) => {
                 const isSelected = selectedTech.includes(tech.name);
                 return (
                   <button
