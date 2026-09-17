@@ -31,6 +31,7 @@ export default function Step4Execution() {
   
   const [copied, setCopied] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [usageLog, setUsageLog] = useState<{ model: string; role: string; usage: any }[]>([]);
 
   const meta = {
     pipeline: {
@@ -50,6 +51,12 @@ export default function Step4Execution() {
       language: "yaml",
       badge: "Manifests Ready",
       synthesizingText: "Synthesizing Kubernetes Manifests...",
+    },
+    docker: {
+      fileName: "docker-compose.yml",
+      language: "yaml",
+      badge: "Compose Ready",
+      synthesizingText: "Synthesizing Docker Compose...",
     },
   }[archetype];
 
@@ -93,6 +100,12 @@ export default function Step4Execution() {
                   const parsed = JSON.parse(dataStr);
                   setStatus(parsed.step);
                   if (parsed.attempt) setAttempt(parsed.attempt);
+                }
+              } else if (ev.startsWith('event: usage')) {
+                const dataStr = ev.split('\ndata: ')[1];
+                if (dataStr) {
+                  const parsed = JSON.parse(dataStr);
+                  setUsageLog(prev => [...prev, parsed]);
                 }
               } else if (ev.startsWith('event: complete')) {
                 const dataStr = ev.split('\ndata: ')[1];
@@ -154,7 +167,7 @@ export default function Step4Execution() {
 
   if (status !== "complete") {
     const isHealing = status === "self_healing";
-    const isLinting = status === "validating";
+    const isLinting = status === "validating" || status === "semantic_validation";
 
     return (
       <div className={`flex flex-col items-center justify-center h-full gap-5 transition-colors duration-500 ${isHealing ? 'bg-orange-950/20' : ''}`}>
@@ -177,6 +190,7 @@ export default function Step4Execution() {
           <p className={`text-xs font-semibold ${isHealing ? 'text-orange-400/90' : isLinting ? 'text-blue-400/90' : 'text-white/80'}`}>
             {status === "synthesizing" ? meta.synthesizingText
               : status === "validating" ? "Validating syntax and structural contracts..."
+              : status === "semantic_validation" ? "LLM verifying user components..."
               : `Linter errors detected. Agent self-correcting (Attempt ${attempt} of 3)...`}
           </p>
           <p className="text-[11px] text-white/30">
@@ -210,7 +224,7 @@ export default function Step4Execution() {
         </div>
       </div>
 
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0 flex flex-col">
         {errorMessage && (
           <div className="absolute top-0 inset-x-0 z-20 bg-yellow-500/10 border-b border-yellow-500/20 p-2 text-center text-xs text-yellow-300 font-medium flex items-center justify-center gap-2">
             <AlertTriangle size={13} />
@@ -218,20 +232,47 @@ export default function Step4Execution() {
           </div>
         )}
 
-        <MonacoEditor
-          height="100%"
-          language={meta.language}
-          value={generatedCode}
-          theme="vs-dark"
-          options={{
-            readOnly: true,
-            minimap: { enabled: true },
-            fontSize: 12,
-            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            wordWrap: "on",
-            padding: { top: errorMessage ? 40 : 16, bottom: 16 },
-          }}
-        />
+        <div className="flex-1 min-h-0">
+          <MonacoEditor
+            height="100%"
+            language={meta.language}
+            value={generatedCode}
+            theme="vs-dark"
+            options={{
+              readOnly: true,
+              minimap: { enabled: true },
+              fontSize: 12,
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              wordWrap: "on",
+              padding: { top: errorMessage ? 40 : 16, bottom: 16 },
+            }}
+          />
+        </div>
+
+        {/* ── Token Usage Footer ── */}
+        {usageLog.length > 0 && (
+          <div className="shrink-0 bg-[#0d0d0d] border-t border-white/[0.05] p-3 overflow-y-auto max-h-[120px] custom-scrollbar">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity size={12} className="text-violet-400" />
+              <span className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">LLM Engine Telemetry</span>
+            </div>
+            <div className="space-y-1.5">
+              {usageLog.map((log, i) => (
+                <div key={i} className="flex items-center justify-between text-[10px] bg-white/[0.02] border border-white/[0.04] p-2 rounded">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-white/70">{log.role}</span>
+                    <span className="text-white/30 px-1.5 py-0.5 rounded bg-white/[0.04]">{log.model}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-white/50">
+                    <span>Prompt: <span className="text-white/80">{log.usage.prompt_tokens}</span></span>
+                    <span>Completion: <span className="text-white/80">{log.usage.completion_tokens}</span></span>
+                    <span className="text-violet-400 font-medium">Total: {log.usage.total_tokens}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

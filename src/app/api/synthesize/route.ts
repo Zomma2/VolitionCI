@@ -27,6 +27,7 @@ import {
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // Limit max_tokens to 1000 to respect free-tier OTPM limits on qwen and gpt-oss-120b
 const MODEL = "openai/gpt-oss-120b";
+const VALIDATOR_MODEL = "llama3-70b-8192";
 const MAX_RETRIES = 3;
 
 export async function POST(req: NextRequest) {
@@ -92,6 +93,12 @@ export async function POST(req: NextRequest) {
             max_tokens: 1000, 
           });
 
+          sendEvent("usage", {
+            model: MODEL,
+            role: "Generator",
+            usage: completion.usage,
+          });
+
           currentOutput = sanitizeOutput(completion.choices[0]?.message?.content ?? "", archetype);
 
           sendEvent("status", { step: "validating" });
@@ -99,12 +106,42 @@ export async function POST(req: NextRequest) {
             ? validateHclOutput(currentOutput)
             : validateYamlOutput(currentOutput);
 
+          // Semantic LLM Validation if schema passed
+          if (errors.length === 0) {
+            sendEvent("status", { step: "semantic_validation" });
+            const validatorCompletion = await groq.chat.completions.create({
+              model: VALIDATOR_MODEL,
+              messages: [
+                {
+                  role: "system",
+                  content: "You are an elite Semantic Validator. Ensure the generated code explicitly declares resources for ALL components requested by the user. If any requested module/service is missing from the code, respond exactly with 'MISSING: <details>'. If all requested components exist, respond exactly with 'VALID'. Do not explain."
+                },
+                {
+                  role: "user",
+                  content: `Requested Context:\n${repoContext}\n\nUser Answers:\n${JSON.stringify(userAnswers, null, 2)}\n\nGenerated Code:\n${currentOutput}`
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 300,
+            });
+
+            sendEvent("usage", {
+              model: VALIDATOR_MODEL,
+              role: "Semantic Validator",
+              usage: validatorCompletion.usage,
+            });
+
+            const valResult = (validatorCompletion.choices[0]?.message?.content || "").trim();
+            if (!valResult.startsWith("VALID")) {
+              errors.push(`Semantic Validation Failed: ${valResult}`);
+            }
+          }
+
           if (errors.length === 0) {
             isValid = true;
           } else {
             attempt++;
             if (attempt <= MAX_RETRIES) {
-              // Self-healing context
               currentMessages = [
                 { role: "system", content: healingSystemPrompt },
                 { role: "user", content: healingUserPromptFn(currentOutput, errors) },
