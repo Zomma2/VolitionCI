@@ -5,8 +5,55 @@ import Groq from "groq-sdk";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const GEMINI_MODEL = "models/gemini-2.5-flash";
+const GEMINI_MODEL = "models/gemini-3.6-flash";
 const GROQ_MODEL = "openai/gpt-oss-20b";
+
+function extractFirstJsonObject(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // Continue to balanced brace extraction
+  }
+
+  const start = raw.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < raw.length; i++) {
+    const c = raw[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\") {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (c === "{") {
+        depth++;
+      } else if (c === "}") {
+        depth--;
+        if (depth === 0) {
+          const candidate = raw.substring(start, i + 1);
+          try {
+            return JSON.parse(candidate);
+          } catch {
+            return null;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -65,7 +112,11 @@ Analyze the entire conversation history and extract/update the configuration fie
         contents: [{ role: "user", parts: [{ text: userMessages }] }],
         generationConfig: { maxOutputTokens: 1200, temperature: 0.3, responseMimeType: "application/json" }
       });
-      parsed = JSON.parse(result.response.text());
+      const rawText = result.response.text();
+      parsed = extractFirstJsonObject(rawText);
+      if (!parsed) {
+        throw new Error("Failed to parse JSON from Gemini response");
+      }
     } catch (geminiErr: any) {
       console.warn("Gemini failed in chat-builder, falling back to Groq:", geminiErr?.message);
       
@@ -81,8 +132,7 @@ Analyze the entire conversation history and extract/update the configuration fie
       });
       
       const rawContent = completion.choices[0]?.message?.content || "{}";
-      const match = rawContent.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(match ? match[0] : "{}");
+      parsed = extractFirstJsonObject(rawContent) || {};
     }
 
     return NextResponse.json(parsed);
