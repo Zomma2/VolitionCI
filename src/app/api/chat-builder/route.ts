@@ -5,7 +5,7 @@ import Groq from "groq-sdk";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const GEMINI_MODEL = "models/antigravity-preview-09-2026";
+const GEMINI_MODEL = "models/gemini-2.5-flash";
 const GROQ_MODEL = "openai/gpt-oss-20b";
 
 export async function POST(req: NextRequest) {
@@ -74,3 +74,4 @@ Analyze the entire conversation history and extract/update the configuration fie
     return NextResponse.json({ reply: "I encountered an error analyzing your request.", config: null }, { status: 500 });
   }
 }
+

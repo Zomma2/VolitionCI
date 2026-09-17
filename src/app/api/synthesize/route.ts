@@ -35,19 +35,19 @@ type ModelConfig = {
 };
 
 const PLANNER_CHAIN: ModelConfig[] = [
-  { provider: "gemini", model: "models/antigravity-preview-09-2026" },
+  { provider: "gemini", model: "models/gemini-2.5-flash" },
   { provider: "cohere", model: "command-r-plus-08-2024" },
   { provider: "groq", model: "openai/gpt-oss-20b" }
 ];
 
 const WORKER_CHAIN: ModelConfig[] = [
-  { provider: "gemini", model: "models/deep-research-max-preview-04-2026" },
+  { provider: "gemini", model: "models/gemini-2.5-pro" },
   { provider: "mistral", model: "codestral-latest" },
   { provider: "groq", model: "openai/gpt-oss-120b" }
 ];
 
 const VALIDATOR_CHAIN: ModelConfig[] = [
-  { provider: "gemini", model: "models/antigravity-preview-09-2026" },
+  { provider: "gemini", model: "models/gemini-2.5-flash" },
   { provider: "mistral", model: "codestral-latest" },
   { provider: "groq", model: "openai/gpt-oss-20b" }
 ];
