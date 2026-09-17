@@ -9,7 +9,7 @@ export interface AgentQuestion {
   options: string[];
 }
 
-export type Archetype = "pipeline" | "terraform" | "kubernetes";
+export type Archetype = "pipeline" | "terraform" | "kubernetes" | "docker";
 
 export interface WizardStore {
   step: 1 | 2 | 3 | 4;

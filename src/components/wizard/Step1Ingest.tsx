@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWizardStore, Archetype } from "@/store/useWizardStore";
-import { ArrowRight, Globe, Search, Grip, Check, Layers, Server, Cpu } from "lucide-react";
+import { ArrowRight, Globe, Search, Grip, Check, Layers, Server, Cpu, Box } from "lucide-react";
 
 const ARCHETYPE_OPTIONS: { id: Archetype; title: string; subtitle: string; icon: any }[] = [
   { 
@@ -23,6 +23,12 @@ const ARCHETYPE_OPTIONS: { id: Archetype; title: string; subtitle: string; icon:
     subtitle: "Orchestration & scaling specs",
     icon: Server 
   },
+  { 
+    id: "docker", 
+    title: "Docker Compose", 
+    subtitle: "Multi-container local & dev specs",
+    icon: Box 
+  },
 ];
 
 const PLATFORM_CONFIG: Record<Archetype, { label: string; options: string[]; default: string }> = {
@@ -40,6 +46,11 @@ const PLATFORM_CONFIG: Record<Archetype, { label: string; options: string[]; def
     label: "Target Cluster Environment",
     options: ["Generic Kubernetes", "Amazon EKS", "Google GKE", "Azure AKS", "Minikube / Local"],
     default: "Generic Kubernetes",
+  },
+  docker: {
+    label: "Target Environment",
+    options: ["Local Development", "Production Swarm", "Testing / CI"],
+    default: "Local Development",
   },
 };
 
@@ -89,6 +100,20 @@ const TECH_OPTIONS_MAP: Record<Archetype, { id: string; name: string; slug: stri
     { id: "certmanager", name: "Cert-Manager", slug: "letsecnrypt", color: "003A70", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" },
     { id: "argo", name: "ArgoCD", slug: "argo", color: "EF7B4D" },
     { id: "docker", name: "Docker", slug: "docker", color: "2496ED" }
+  ],
+  docker: [
+    { id: "docker", name: "Docker", slug: "docker", color: "2496ED" },
+    { id: "postgres", name: "PostgreSQL", slug: "postgresql", color: "4169E1" },
+    { id: "mysql", name: "MySQL", slug: "mysql", color: "4479A1" },
+    { id: "mongo", name: "MongoDB", slug: "mongodb", color: "47A248" },
+    { id: "redis", name: "Redis", slug: "redis", color: "DC382D" },
+    { id: "rabbitmq", name: "RabbitMQ", slug: "rabbitmq", color: "FF6600" },
+    { id: "nginx", name: "Nginx", slug: "nginx", color: "009639" },
+    { id: "node", name: "Node.js", slug: "nodedotjs", color: "339933" },
+    { id: "python", name: "Python", slug: "python", color: "3776AB" },
+    { id: "go", name: "Go", slug: "go", color: "00ADD8" },
+    { id: "java", name: "Java", slug: "java", color: "ED8B00", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" },
+    { id: "elasticsearch", name: "Elasticsearch", slug: "elasticsearch", color: "005571" }
   ]
 };
 

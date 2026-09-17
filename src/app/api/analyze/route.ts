@@ -11,6 +11,10 @@ import {
   KUBERNETES_INTERROGATION_SYSTEM_PROMPT,
   KUBERNETES_INTERROGATION_USER_PROMPT,
 } from "@/lib/prompts/iacPrompts";
+import {
+  DOCKER_INTERROGATION_SYSTEM_PROMPT,
+  DOCKER_INTERROGATION_USER_PROMPT,
+} from "@/lib/prompts/dockerPrompts";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN || undefined });
@@ -95,6 +99,9 @@ ${manualStack.join(", ")}
     } else if (archetype === "kubernetes") {
       systemPrompt = KUBERNETES_INTERROGATION_SYSTEM_PROMPT;
       userPrompt = KUBERNETES_INTERROGATION_USER_PROMPT(repoContext, targetPlatform);
+    } else if (archetype === "docker") {
+      systemPrompt = DOCKER_INTERROGATION_SYSTEM_PROMPT;
+      userPrompt = DOCKER_INTERROGATION_USER_PROMPT(repoContext, targetPlatform);
     }
 
     const completion = await groq.chat.completions.create({

@@ -89,6 +89,11 @@ export default function Step3Interrogate() {
       subtitle: "The agent analyzed services and ports. Configure ingress, auto-scaling, and pod security.",
       icon: Server,
     },
+    docker: {
+      title: "Docker Compose Configuration",
+      subtitle: "The agent analyzed your stack. Configure networking, volumes, and service dependencies.",
+      icon: Box,
+    },
   }[archetype];
 
   const HeaderIcon = headerMeta.icon;
@@ -189,7 +194,7 @@ export default function Step3Interrogate() {
           disabled={Object.keys(userAnswers).length < agentQuestions.length}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
         >
-          Synthesize {archetype === "terraform" ? "Terraform" : archetype === "kubernetes" ? "Manifests" : "Pipeline"} <ArrowRight size={14} />
+          Synthesize {archetype === "terraform" ? "Terraform" : archetype === "kubernetes" ? "Manifests" : archetype === "docker" ? "Compose File" : "Pipeline"} <ArrowRight size={14} />
         </button>
       </div>
     </div>

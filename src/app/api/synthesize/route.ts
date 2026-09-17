@@ -17,6 +17,12 @@ import {
   KUBERNETES_HEALING_SYSTEM_PROMPT,
   KUBERNETES_HEALING_USER_PROMPT,
 } from "@/lib/prompts/iacPrompts";
+import {
+  DOCKER_SYNTHESIS_SYSTEM_PROMPT,
+  DOCKER_SYNTHESIS_USER_PROMPT,
+  DOCKER_HEALING_SYSTEM_PROMPT,
+  DOCKER_HEALING_USER_PROMPT,
+} from "@/lib/prompts/dockerPrompts";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // Limit max_tokens to 1000 to respect free-tier OTPM limits on qwen and gpt-oss-120b
@@ -60,6 +66,11 @@ export async function POST(req: NextRequest) {
           initialUserPrompt = KUBERNETES_SYNTHESIS_USER_PROMPT(provider || "Generic Kubernetes", repoContext, userAnswers);
           healingSystemPrompt = KUBERNETES_HEALING_SYSTEM_PROMPT;
           healingUserPromptFn = KUBERNETES_HEALING_USER_PROMPT;
+        } else if (archetype === "docker") {
+          initialSystemPrompt = DOCKER_SYNTHESIS_SYSTEM_PROMPT;
+          initialUserPrompt = DOCKER_SYNTHESIS_USER_PROMPT(repoContext, provider || "Local Development", userAnswers);
+          healingSystemPrompt = DOCKER_HEALING_SYSTEM_PROMPT;
+          healingUserPromptFn = DOCKER_HEALING_USER_PROMPT;
         }
 
         let currentMessages: any[] = [
