@@ -54,26 +54,13 @@ const PLATFORM_CONFIG: Record<Archetype, { label: string; options: string[]; def
   },
 };
 
-const TECH_OPTIONS_MAP: Record<Archetype, { id: string; name: string; slug: string; color: string; whiteInvert?: boolean; customUrl?: string }[]> = {
-  pipeline: [
-    { id: "react", name: "React", slug: "react", color: "61DAFB" },
-    { id: "nextjs", name: "Next.js", slug: "nextdotjs", color: "000000", whiteInvert: true },
-    { id: "node", name: "Node.js", slug: "nodedotjs", color: "339933" },
-    { id: "python", name: "Python", slug: "python", color: "3776AB" },
-    { id: "go", name: "Go", slug: "go", color: "00ADD8" },
-    { id: "java", name: "Java", slug: "java", color: "ED8B00", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" },
-    { id: "postgres", name: "PostgreSQL", slug: "postgresql", color: "4169E1" },
-    { id: "mysql", name: "MySQL", slug: "mysql", color: "4479A1" },
-    { id: "mongo", name: "MongoDB", slug: "mongodb", color: "47A248" },
-    { id: "redis", name: "Redis", slug: "redis", color: "DC382D" },
+const getTechOptions = (archetype: Archetype, platform: string) => {
+  const commonIac = [
+    { id: "terraform", name: "Terraform", slug: "terraform", color: "844FBA" },
     { id: "docker", name: "Docker", slug: "docker", color: "2496ED" },
-    { id: "k8s", name: "Kubernetes", slug: "kubernetes", color: "326CE5" },
-    { id: "aws", name: "AWS", slug: "amazonwebservices", color: "232F3E", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
-    { id: "gcp", name: "GCP", slug: "googlecloud", color: "4285F4" },
-    { id: "azure", name: "Azure", slug: "microsoftazure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
-    { id: "terraform", name: "Terraform", slug: "terraform", color: "844FBA" }
-  ],
-  terraform: [
+  ];
+  
+  const awsTf = [
     { id: "aws", name: "AWS", slug: "amazonwebservices", color: "232F3E", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
     { id: "s3", name: "AWS S3", slug: "amazons3", color: "569A31", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "dynamodb", name: "DynamoDB", slug: "amazondynamodb", color: "4053D6", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
@@ -81,40 +68,92 @@ const TECH_OPTIONS_MAP: Record<Archetype, { id: string; name: string; slug: stri
     { id: "ecs", name: "AWS ECS", slug: "amazonecs", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "eks", name: "AWS EKS", slug: "amazoneks", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "iam", name: "AWS IAM", slug: "amazoniam", color: "DD344C", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+  ];
+  
+  const azureTf = [
     { id: "azure", name: "Azure", slug: "microsoftazure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
     { id: "azureblob", name: "Azure Blob", slug: "azure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+    { id: "azureaks", name: "Azure AKS", slug: "azure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+    { id: "azuresql", name: "Azure SQL", slug: "azure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" },
+  ];
+  
+  const gcpTf = [
     { id: "gcp", name: "GCP", slug: "googlecloud", color: "4285F4" },
-    { id: "terraform", name: "Terraform", slug: "terraform", color: "844FBA" },
-    { id: "docker", name: "Docker", slug: "docker", color: "2496ED" }
-  ],
-  kubernetes: [
-    { id: "k8s", name: "Kubernetes", slug: "kubernetes", color: "326CE5" },
-    { id: "helm", name: "Helm", slug: "helm", color: "0F1689" },
-    { id: "kustomize", name: "Kustomize", slug: "kustomize", color: "326CE5" },
-    { id: "nginx", name: "Ingress-Nginx", slug: "nginx", color: "009639" },
-    { id: "traefik", name: "Traefik", slug: "traefikmesh", color: "24A1C1" },
-    { id: "prometheus", name: "Prometheus", slug: "prometheus", color: "E6522C" },
-    { id: "grafana", name: "Grafana", slug: "grafana", color: "F46800" },
-    { id: "istio", name: "Istio", slug: "istio", color: "466BB0" },
-    { id: "linkerd", name: "Linkerd", slug: "linkerd", color: "17203A" },
-    { id: "certmanager", name: "Cert-Manager", slug: "letsecnrypt", color: "003A70", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" },
-    { id: "argo", name: "ArgoCD", slug: "argo", color: "EF7B4D" },
-    { id: "docker", name: "Docker", slug: "docker", color: "2496ED" }
-  ],
-  docker: [
-    { id: "docker", name: "Docker", slug: "docker", color: "2496ED" },
-    { id: "postgres", name: "PostgreSQL", slug: "postgresql", color: "4169E1" },
-    { id: "mysql", name: "MySQL", slug: "mysql", color: "4479A1" },
-    { id: "mongo", name: "MongoDB", slug: "mongodb", color: "47A248" },
-    { id: "redis", name: "Redis", slug: "redis", color: "DC382D" },
-    { id: "rabbitmq", name: "RabbitMQ", slug: "rabbitmq", color: "FF6600" },
-    { id: "nginx", name: "Nginx", slug: "nginx", color: "009639" },
-    { id: "node", name: "Node.js", slug: "nodedotjs", color: "339933" },
-    { id: "python", name: "Python", slug: "python", color: "3776AB" },
-    { id: "go", name: "Go", slug: "go", color: "00ADD8" },
-    { id: "java", name: "Java", slug: "java", color: "ED8B00", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" },
-    { id: "elasticsearch", name: "Elasticsearch", slug: "elasticsearch", color: "005571" }
-  ]
+    { id: "gke", name: "GKE", slug: "googlecloud", color: "4285F4" },
+    { id: "gcs", name: "Cloud Storage", slug: "googlecloud", color: "4285F4" },
+    { id: "cloudrun", name: "Cloud Run", slug: "googlecloud", color: "4285F4" },
+  ];
+  
+  const doTf = [
+    { id: "digitalocean", name: "DigitalOcean", slug: "digitalocean", color: "0080FF" },
+    { id: "doks", name: "DOKS", slug: "digitalocean", color: "0080FF" },
+    { id: "spaces", name: "Spaces", slug: "digitalocean", color: "0080FF" },
+  ];
+
+  if (archetype === "terraform") {
+    if (platform === "AWS") return [...awsTf, ...commonIac];
+    if (platform === "Azure") return [...azureTf, ...commonIac];
+    if (platform === "Google Cloud") return [...gcpTf, ...commonIac];
+    if (platform === "DigitalOcean") return [...doTf, ...commonIac];
+    return [...awsTf, ...azureTf, ...gcpTf, ...commonIac];
+  }
+
+  if (archetype === "kubernetes") {
+    const k8sCommon = [
+      { id: "k8s", name: "Kubernetes", slug: "kubernetes", color: "326CE5" },
+      { id: "helm", name: "Helm", slug: "helm", color: "0F1689" },
+      { id: "kustomize", name: "Kustomize", slug: "kustomize", color: "326CE5" },
+      { id: "nginx", name: "Ingress-Nginx", slug: "nginx", color: "009639" },
+      { id: "traefik", name: "Traefik", slug: "traefikmesh", color: "24A1C1" },
+      { id: "prometheus", name: "Prometheus", slug: "prometheus", color: "E6522C" },
+      { id: "grafana", name: "Grafana", slug: "grafana", color: "F46800" },
+      { id: "istio", name: "Istio", slug: "istio", color: "466BB0" },
+      { id: "linkerd", name: "Linkerd", slug: "linkerd", color: "17203A" },
+      { id: "certmanager", name: "Cert-Manager", slug: "letsecnrypt", color: "003A70", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kubernetes/kubernetes-plain.svg" },
+      { id: "argo", name: "ArgoCD", slug: "argo", color: "EF7B4D" },
+      { id: "docker", name: "Docker", slug: "docker", color: "2496ED" }
+    ];
+    if (platform === "Amazon EKS") return [{ id: "aws", name: "AWS EKS", slug: "amazonwebservices", color: "232F3E", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" }, ...k8sCommon];
+    if (platform === "Azure AKS") return [{ id: "azure", name: "Azure AKS", slug: "microsoftazure", color: "0078D4", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/azure/azure-original.svg" }, ...k8sCommon];
+    if (platform === "Google GKE") return [{ id: "gcp", name: "Google GKE", slug: "googlecloud", color: "4285F4" }, ...k8sCommon];
+    return k8sCommon;
+  }
+
+  if (archetype === "pipeline") {
+    return [
+      { id: "react", name: "React", slug: "react", color: "61DAFB" },
+      { id: "nextjs", name: "Next.js", slug: "nextdotjs", color: "000000", whiteInvert: true },
+      { id: "node", name: "Node.js", slug: "nodedotjs", color: "339933" },
+      { id: "python", name: "Python", slug: "python", color: "3776AB" },
+      { id: "go", name: "Go", slug: "go", color: "00ADD8" },
+      { id: "java", name: "Java", slug: "java", color: "ED8B00", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" },
+      { id: "postgres", name: "PostgreSQL", slug: "postgresql", color: "4169E1" },
+      { id: "mysql", name: "MySQL", slug: "mysql", color: "4479A1" },
+      { id: "mongo", name: "MongoDB", slug: "mongodb", color: "47A248" },
+      { id: "redis", name: "Redis", slug: "redis", color: "DC382D" },
+      { id: "docker", name: "Docker", slug: "docker", color: "2496ED" },
+      { id: "k8s", name: "Kubernetes", slug: "kubernetes", color: "326CE5" },
+    ];
+  }
+
+  if (archetype === "docker") {
+    return [
+      { id: "docker", name: "Docker", slug: "docker", color: "2496ED" },
+      { id: "postgres", name: "PostgreSQL", slug: "postgresql", color: "4169E1" },
+      { id: "mysql", name: "MySQL", slug: "mysql", color: "4479A1" },
+      { id: "mongo", name: "MongoDB", slug: "mongodb", color: "47A248" },
+      { id: "redis", name: "Redis", slug: "redis", color: "DC382D" },
+      { id: "rabbitmq", name: "RabbitMQ", slug: "rabbitmq", color: "FF6600" },
+      { id: "nginx", name: "Nginx", slug: "nginx", color: "009639" },
+      { id: "node", name: "Node.js", slug: "nodedotjs", color: "339933" },
+      { id: "python", name: "Python", slug: "python", color: "3776AB" },
+      { id: "go", name: "Go", slug: "go", color: "00ADD8" },
+      { id: "java", name: "Java", slug: "java", color: "ED8B00", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" },
+      { id: "elasticsearch", name: "Elasticsearch", slug: "elasticsearch", color: "005571" }
+    ];
+  }
+
+  return [];
 };
 
 export default function Step1Ingest() {
@@ -242,6 +281,26 @@ export default function Step1Ingest() {
 
       {/* ── Form Body ── */}
       <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-hidden flex flex-col min-h-0">
+        {/* ── Dynamic Target Platform Dropdown ── */}
+        <div className="space-y-2 shrink-0">
+          <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
+            {currentPlatformConfig.label}
+          </label>
+          <select
+            value={targetPlatform}
+            onChange={(e) => {
+              setTargetPlatform(e.target.value);
+              setSelectedTech([]); // Clear selection when platform changes
+            }}
+            className="w-full appearance-none bg-white/[0.04] border border-white/[0.07] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-violet-500/60 focus:bg-white/[0.06] transition-all"
+            style={{ colorScheme: "dark" }}
+          >
+            {currentPlatformConfig.options.map((opt) => (
+              <option key={opt} value={opt} className="bg-slate-900">{opt}</option>
+            ))}
+          </select>
+        </div>
+
         {mode === "scan" ? (
           <div className="space-y-2 shrink-0">
             <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
@@ -266,7 +325,7 @@ export default function Step1Ingest() {
               Select Technologies
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {TECH_OPTIONS_MAP[archetype].map((tech) => {
+              {getTechOptions(archetype, targetPlatform).map((tech) => {
                 const isSelected = selectedTech.includes(tech.name);
                 return (
                   <button
@@ -299,23 +358,6 @@ export default function Step1Ingest() {
             {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
           </div>
         )}
-
-        {/* ── Dynamic Target Platform Dropdown ── */}
-        <div className="space-y-2 shrink-0">
-          <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
-            {currentPlatformConfig.label}
-          </label>
-          <select
-            value={targetPlatform}
-            onChange={(e) => setTargetPlatform(e.target.value)}
-            className="w-full appearance-none bg-white/[0.04] border border-white/[0.07] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-violet-500/60 focus:bg-white/[0.06] transition-all"
-            style={{ colorScheme: "dark" }}
-          >
-            {currentPlatformConfig.options.map((opt) => (
-              <option key={opt} value={opt} className="bg-slate-900">{opt}</option>
-            ))}
-          </select>
-        </div>
 
         <button
           type="submit"
