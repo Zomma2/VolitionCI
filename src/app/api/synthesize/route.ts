@@ -29,80 +29,139 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-// Groq Fallbacks
-const GROQ_WORKER_MODEL = "openai/gpt-oss-120b";
-const GROQ_VALIDATOR_MODEL = "openai/gpt-oss-20b";
+type ModelConfig = {
+  provider: "gemini" | "mistral" | "cohere" | "groq";
+  model: string;
+};
 
-// Gemini Primary Models
-const GEMINI_PLANNER = "models/antigravity-preview-09-2026";
-const GEMINI_WORKER = "models/deep-research-max-preview-04-2026"; 
-const GEMINI_VALIDATOR = "models/antigravity-preview-09-2026";
+const PLANNER_CHAIN: ModelConfig[] = [
+  { provider: "gemini", model: "models/antigravity-preview-09-2026" },
+  { provider: "cohere", model: "command-r-plus-08-2024" },
+  { provider: "groq", model: "openai/gpt-oss-20b" }
+];
+
+const WORKER_CHAIN: ModelConfig[] = [
+  { provider: "gemini", model: "models/deep-research-max-preview-04-2026" },
+  { provider: "mistral", model: "codestral-latest" },
+  { provider: "groq", model: "openai/gpt-oss-120b" }
+];
+
+const VALIDATOR_CHAIN: ModelConfig[] = [
+  { provider: "gemini", model: "models/antigravity-preview-09-2026" },
+  { provider: "mistral", model: "codestral-latest" },
+  { provider: "groq", model: "openai/gpt-oss-20b" }
+];
 
 const MAX_RETRIES = 3;
 
-async function runModelWithFallback(
+async function runModelChain(
   role: string,
   systemPrompt: string,
   userPrompt: string,
   maxTokens: number,
-  primaryModel: string,
-  fallbackModel: string,
+  chain: ModelConfig[],
   sendEvent: Function
 ) {
-  try {
-    const model = genAI.getGenerativeModel({ 
-      model: primaryModel,
-      systemInstruction: systemPrompt 
-    });
+  let lastError;
+  for (let i = 0; i < chain.length; i++) {
+    const config = chain[i];
+    const isPrimary = i === 0;
+    const attemptRole = role + (isPrimary ? " (Primary)" : ` (Fallback ${i})`);
     
-    const startTime = Date.now();
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.15 }
-    });
-    const content = result.response.text();
-    const elapsed = (Date.now() - startTime) / 1000;
-    
-    const usage = result.response.usageMetadata;
-    
-    sendEvent("usage", {
-      model: primaryModel.replace("models/", ""),
-      role: role + " (Primary)",
-      usage: {
-        prompt_tokens: usage?.promptTokenCount || 0,
-        completion_tokens: usage?.candidatesTokenCount || 0,
-        total_tokens: usage?.totalTokenCount || 0,
-        total_time: elapsed
+    try {
+      const startTime = Date.now();
+      let content = "";
+      let usage: any = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, total_time: 0 };
+      
+      if (config.provider === "gemini") {
+        const model = genAI.getGenerativeModel({ 
+          model: config.model,
+          systemInstruction: systemPrompt 
+        });
+        const result = await model.generateContent({
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.15 }
+        });
+        content = result.response.text();
+        const u = result.response.usageMetadata;
+        usage.prompt_tokens = u?.promptTokenCount || 0;
+        usage.completion_tokens = u?.candidatesTokenCount || 0;
+        usage.total_tokens = u?.totalTokenCount || 0;
+      } else if (config.provider === "mistral") {
+        const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.MISTRAL_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: config.model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.15,
+            max_tokens: maxTokens
+          })
+        });
+        if (!res.ok) throw new Error(`Mistral API Error: ${await res.text()}`);
+        const data = await res.json();
+        content = data.choices[0]?.message?.content || "";
+        usage = data.usage || usage;
+      } else if (config.provider === "cohere") {
+        const res = await fetch("https://api.cohere.com/v2/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.COHERE_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: config.model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.15,
+            max_tokens: maxTokens
+          })
+        });
+        if (!res.ok) throw new Error(`Cohere API Error: ${await res.text()}`);
+        const data = await res.json();
+        content = data.message?.content?.[0]?.text || "";
+        usage.prompt_tokens = data.usage?.tokens?.input_tokens || 0;
+        usage.completion_tokens = data.usage?.tokens?.output_tokens || 0;
+        usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+      } else if (config.provider === "groq") {
+        const completion = await groq.chat.completions.create({
+          model: config.model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.15,
+          max_tokens: maxTokens
+        });
+        content = completion.choices[0]?.message?.content || "";
+        usage = completion.usage as any || usage;
       }
-    });
-    
-    return content;
-  } catch (err: any) {
-    console.error(`Gemini failed for ${role}, falling back to Groq:`, err?.message || err);
-    
-    const startTime = Date.now();
-    const completion = await groq.chat.completions.create({
-      model: fallbackModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.15,
-      max_tokens: maxTokens
-    });
-    const elapsed = (Date.now() - startTime) / 1000;
-    
-    const usage: any = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-    usage.total_time = elapsed;
-    
-    sendEvent("usage", {
-      model: fallbackModel,
-      role: role + " (Fallback)",
-      usage: usage
-    });
-    
-    return completion.choices[0]?.message?.content || "";
+      
+      usage.total_time = (Date.now() - startTime) / 1000;
+      
+      sendEvent("usage", {
+        model: config.model.replace("models/", ""),
+        role: attemptRole,
+        usage: usage
+      });
+      
+      return content;
+    } catch (err: any) {
+      console.error(`${config.provider} failed for ${role}:`, err?.message || err);
+      lastError = err;
+      // continue loop to next fallback
+    }
   }
+  
+  throw new Error(`All models in chain failed for ${role}. Last error: ${lastError?.message}`);
 }
 
 export async function POST(req: NextRequest) {
@@ -159,13 +218,12 @@ export async function POST(req: NextRequest) {
           const systemPrompt = `You are an Infrastructure Planner. The user wants to deploy a ${archetype} architecture. Break the deployment down into 2 to 5 logical code modules (e.g., ["Provider Settings", "Networking", "Compute", "Database"]). Output strictly a JSON object with the format: {"plan": ["module1", "module2", ...]}. Do NOT use markdown formatting (\`\`\`json). Do NOT add any explanations.`;
           const userPrompt = `Context: ${repoContext}\nProvider: ${provider}\nAnswers: ${JSON.stringify(userAnswers)}`;
 
-          const rawContent = await runModelWithFallback(
+          const rawContent = await runModelChain(
             "Planner",
             systemPrompt,
             userPrompt,
             400,
-            GEMINI_PLANNER,
-            GROQ_VALIDATOR_MODEL,
+            PLANNER_CHAIN,
             sendEvent
           );
 
@@ -202,13 +260,12 @@ export async function POST(req: NextRequest) {
             const sysPrompt = chunkAttempt === 0 ? initialSystemPrompt : healingSystemPrompt;
             const usrPrompt = chunkAttempt === 0 ? basePrompt : healingUserPromptFn(chunkOutput, finalErrors);
 
-            const rawContent = await runModelWithFallback(
+            const rawContent = await runModelChain(
               `Worker (${chunkName})`,
               sysPrompt,
               usrPrompt,
               1000,
-              GEMINI_WORKER,
-              GROQ_WORKER_MODEL,
+              WORKER_CHAIN,
               sendEvent
             );
 
@@ -243,13 +300,12 @@ export async function POST(req: NextRequest) {
           const sysPrompt = "You are an elite Semantic Validator. Ensure the generated code explicitly declares resources for ALL components requested by the user. If any requested module/service is missing, respond exactly with 'MISSING: <details>'. If all requested components exist, respond exactly with 'VALID'. Do not explain.";
           const usrPrompt = `Requested Context:\n${repoContext}\n\nUser Answers:\n${JSON.stringify(userAnswers, null, 2)}\n\nGenerated Code:\n${currentOutput}`;
 
-          const rawContent = await runModelWithFallback(
+          const rawContent = await runModelChain(
             "Semantic Validator",
             sysPrompt,
             usrPrompt,
             300,
-            GEMINI_VALIDATOR,
-            GROQ_VALIDATOR_MODEL,
+            VALIDATOR_CHAIN,
             sendEvent
           );
 
