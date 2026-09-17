@@ -63,11 +63,22 @@ const getTechOptions = (archetype: Archetype, platform: string) => {
   const awsTf = [
     { id: "aws", name: "AWS", slug: "amazonwebservices", color: "232F3E", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" },
     { id: "s3", name: "AWS S3", slug: "amazons3", color: "569A31", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "ec2", name: "AWS EC2", slug: "amazonec2", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "rds", name: "AWS RDS", slug: "amazonrds", color: "527FFF", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "lambda", name: "AWS Lambda", slug: "awslambda", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "apigateway", name: "API Gateway", slug: "amazonapigateway", color: "FF4F8B", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "dynamodb", name: "DynamoDB", slug: "amazondynamodb", color: "4053D6", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "vpc", name: "AWS VPC", slug: "amazonvpc", color: "7AA116", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "ecs", name: "AWS ECS", slug: "amazonecs", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "eks", name: "AWS EKS", slug: "amazoneks", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "ecr", name: "AWS ECR", slug: "amazonecr", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
     { id: "iam", name: "AWS IAM", slug: "amazoniam", color: "DD344C", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "cloudfront", name: "CloudFront", slug: "amazoncloudfront", color: "8C4FFF", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "route53", name: "Route 53", slug: "amazonroute53", color: "FF9900", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "sqs", name: "AWS SQS", slug: "amazonsqs", color: "FF4F8B", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "sns", name: "AWS SNS", slug: "amazonsns", color: "FF4F8B", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "elasticache", name: "ElastiCache", slug: "amazonelasticache", color: "C925D1", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
+    { id: "secretsmanager", name: "Secrets Manager", slug: "awssecretsmanager", color: "DD344C", customUrl: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original.svg" },
   ];
   
   const azureTf = [
