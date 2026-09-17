@@ -55,7 +55,8 @@ export interface PipelineFormData {
 }
 
 export interface GenerationState {
-  status: "idle" | "queued" | "generating" | "success" | "error";
+  status: "idle" | "queued" | "generating" | "linting" | "self_healing" | "success" | "error";
+  attempt?: number;
   output: string;
   errorMessage: string;
 }

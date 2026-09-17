@@ -10,15 +10,27 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@octokit/rest": "^22.0.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "dockerfile-ast": "^0.7.1",
+    "dockerfile-utils": "^0.16.3",
+    "framer-motion": "^13.4.0",
     "groq-sdk": "^1.6.0",
+    "js-yaml": "^5.4.2",
     "lucide-react": "^1.46.0",
+    "monaco-yaml": "^5.5.1",
     "next": "16.3.5",
     "p-queue": "^9.3.3",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "repomix": "^1.18.0",
+    "yaml": "^2.9.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
