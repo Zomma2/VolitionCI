@@ -3,10 +3,8 @@
  *
  * POST /api/generate
  *
- * Receives a pipeline generation request, enqueues it via the global PQueue
- * (concurrency: 1) to protect Groq's TPM limits, builds provider-specific
- * prompts via the prompt engineering module, calls the Groq chat completions
- * API, and returns the generated configuration text.
+ * SSE handler that generates CI/CD configs or Dockerfiles, lints them,
+ * and self-heals errors via a loop before returning the final result.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,10 +12,8 @@ import Groq from "groq-sdk";
 import queue from "@/lib/queue";
 import { buildPrompts } from "@/lib/prompts";
 import type { CIProvider, Infrastructure, RepoType, OutputType } from "@/types/pipeline";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { validate as validateDockerfile } from "dockerfile-utils";
+import YAML from "yaml";
 
 export interface GenerateRequest {
   repoType: RepoType;
@@ -30,65 +26,21 @@ export interface GenerateRequest {
   proxyServer?: string;
 }
 
-export interface GenerateResponse {
-  output: string;
-}
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = "openai/gpt-oss-120b";
+const MAX_RETRIES = 3;
 
-export interface GenerateError {
-  error: string;
-}
-
-// ---------------------------------------------------------------------------
-// Groq client — instantiated once per module lifecycle
-// ---------------------------------------------------------------------------
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
-const MODEL = "qwen/qwen3.8-27b";
-
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
-
-export async function POST(
-  req: NextRequest
-): Promise<NextResponse<GenerateResponse | GenerateError>> {
-  // ── Parse & validate body ─────────────────────────────────────────────────
+export async function POST(req: NextRequest) {
   let body: GenerateRequest;
   try {
     body = (await req.json()) as GenerateRequest;
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON in request body." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid JSON in request body." }, { status: 400 });
   }
 
-  const { 
-    repoType, 
-    ciProvider, 
-    infrastructure, 
-    customRequirements, 
-    outputType,
-    baseImage,
-    databases,
-    proxyServer
-  } = body;
-
-  // We only require repoType and ciProvider if they are generating a ci-pipeline
-  if (outputType === "ci-pipeline" && (!repoType || !ciProvider)) {
-    return NextResponse.json(
-      { error: "Missing required fields: repoType and ciProvider for CI Pipeline." },
-      { status: 400 }
-    );
-  }
-
-  // Default outputType to ci-pipeline if not provided
+  const { repoType, ciProvider, infrastructure, customRequirements, outputType, baseImage, databases, proxyServer } = body;
   const resolvedOutputType: OutputType = outputType || "ci-pipeline";
 
-  // ── Build prompts via prompt engineering module ────────────────────────────
   const { systemPrompt, userPrompt } = buildPrompts({
     repoType,
     ciProvider,
@@ -100,107 +52,122 @@ export async function POST(
     proxyServer,
   });
 
-  // ── Enqueue Groq call ─────────────────────────────────────────────────────
-  try {
-    const output = await queue.add(async () => {
-      const completion = await groq.chat.completions.create({
-        model: MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.15, // Low temp for deterministic, precise config output
-        max_tokens: 8192,  // Increased for complex multi-stage pipelines
-        top_p: 0.9,
-      });
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      function sendEvent(event: string, data: any) {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      }
 
-      return completion.choices[0]?.message?.content ?? "";
-    });
+      try {
+        await queue.add(async () => {
+          let currentOutput = "";
+          let attempt = 0;
+          let isValid = false;
 
-    // Sanitize: strip any accidental markdown fences the model may include
-    const sanitized = sanitizeOutput(output as string);
+          let currentMessages: any[] = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ];
 
-    return NextResponse.json({ output: sanitized });
-  } catch (err: unknown) {
-    console.error("[/api/generate] Groq error:", err);
+          sendEvent("status", { status: "generating" });
 
-    // Handle Groq rate-limit errors (HTTP 429)
-    if (isGroqRateLimitError(err)) {
-      return NextResponse.json(
-        {
-          error:
-            "Rate limit reached — Groq is processing too many requests. " +
-            "The queue is holding your request. Please wait 60 seconds and try again.",
-        },
-        { status: 429 }
-      );
+          while (attempt <= MAX_RETRIES && !isValid) {
+            if (attempt > 0) {
+              sendEvent("status", { status: "self_healing", attempt });
+            }
+
+            const completion = await groq.chat.completions.create({
+              model: MODEL,
+              messages: currentMessages,
+              temperature: 0.15,
+              max_tokens: 1000,
+              top_p: 0.9,
+            });
+
+            currentOutput = sanitizeOutput(completion.choices[0]?.message?.content ?? "");
+
+            sendEvent("status", { status: "linting" });
+            const errors = validateOutput(currentOutput, resolvedOutputType);
+
+            if (errors.length === 0) {
+              isValid = true;
+            } else {
+              attempt++;
+              if (attempt <= MAX_RETRIES) {
+                // Add the response and the error back to the context to self-heal
+                currentMessages.push({ role: "assistant", content: currentOutput });
+                currentMessages.push({
+                  role: "user",
+                  content: `The generated code failed validation with the following errors:\n${errors.join("\n")}\n\nPlease analyze the errors, fix the configuration, and return ONLY the corrected raw code without markdown wrappers or conversational text.`,
+                });
+              }
+            }
+          }
+
+          if (isValid) {
+            sendEvent("success", { output: currentOutput });
+          } else {
+            // Failed after all retries, return the best effort with a warning
+            sendEvent("success", { 
+              output: currentOutput, 
+              warning: `Could not fully resolve all linter errors after ${MAX_RETRIES} attempts.` 
+            });
+          }
+        });
+      } catch (err: any) {
+        console.error("[/api/generate] Error:", err);
+        sendEvent("error", { 
+          message: err?.status === 429 
+            ? "Rate limit reached. Please wait 60 seconds." 
+            : err?.status === 401 ? "Authentication failed. Check API key." 
+            : "An unexpected error occurred." 
+        });
+      } finally {
+        controller.close();
+      }
     }
+  });
 
-    // Handle auth errors
-    if (isGroqAuthError(err)) {
-      return NextResponse.json(
-        {
-          error:
-            "Authentication failed — please check your GROQ_API_KEY in .env.local.",
-        },
-        { status: 401 }
-      );
-    }
-
-    // Generic server error
-    return NextResponse.json(
-      {
-        error:
-          "An unexpected error occurred while generating the configuration. " +
-          "Please check your API key and try again.",
-      },
-      { status: 500 }
-    );
-  }
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Strips markdown code fences that the model may hallucinate despite the
- * system prompt instructions, so the Monaco editor always receives clean text.
- */
+function validateOutput(content: string, type: OutputType): string[] {
+  const errors: string[] = [];
+
+  if (type === "dockerfile") {
+    const res = validateDockerfile(content);
+    if (res && res.length > 0) {
+      errors.push(...res.map((e: any) => `Line ${e.instructionLine || 'unknown'}: ${e.message}`));
+    }
+  } else if (type === "ci-pipeline" || type === "docker-compose") {
+    try {
+      YAML.parse(content, { strict: true });
+    } catch (err: any) {
+      errors.push(err.message || "Invalid YAML syntax");
+    }
+  }
+
+  return errors;
+}
+
 function sanitizeOutput(raw: string): string {
   let cleaned = raw;
-
-  // Remove any leading text before the actual config (e.g. "Here is your config:\n")
-  // Detect common preamble patterns
   cleaned = cleaned.replace(/^[\s\S]*?(?=(?:name:|stages:|version:|pipeline\s*\{|FROM\s|server\s*\{|#\s*---|---\n))/i, "");
-
-  // Remove opening fence (```yaml, ```yml, ```dockerfile, etc.)
   cleaned = cleaned.replace(/^```[a-z]*\n?/i, "");
-  // Remove closing fence
   cleaned = cleaned.replace(/\n?```\s*$/i, "");
-
-  // If we accidentally stripped everything, return the original
   if (cleaned.trim().length === 0) {
     cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/\n?```\s*$/i, "");
   }
-
   return cleaned.trim();
-}
-
-/**
- * Type-guard for Groq rate-limit (HTTP 429) errors.
- */
-function isGroqRateLimitError(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  const e = err as Record<string, unknown>;
-  return e["status"] === 429 || e["statusCode"] === 429;
-}
-
-/**
- * Type-guard for Groq authentication (HTTP 401/403) errors.
- */
-function isGroqAuthError(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  const e = err as Record<string, unknown>;
-  return e["status"] === 401 || e["status"] === 403;
 }
