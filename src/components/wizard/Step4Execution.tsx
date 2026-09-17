@@ -32,6 +32,8 @@ export default function Step4Execution() {
   const [copied, setCopied] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [usageLog, setUsageLog] = useState<{ model: string; role: string; usage: any }[]>([]);
+  const [currentModule, setCurrentModule] = useState("");
+  const [moduleProgress, setModuleProgress] = useState({ current: 0, total: 0 });
 
   const meta = {
     pipeline: {
@@ -100,6 +102,8 @@ export default function Step4Execution() {
                   const parsed = JSON.parse(dataStr);
                   setStatus(parsed.step);
                   if (parsed.attempt) setAttempt(parsed.attempt);
+                  if (parsed.module) setCurrentModule(parsed.module);
+                  if (parsed.current) setModuleProgress({ current: parsed.current, total: parsed.total });
                 }
               } else if (ev.startsWith('event: usage')) {
                 const dataStr = ev.split('\ndata: ')[1];
@@ -188,7 +192,9 @@ export default function Step4Execution() {
         </div>
         <div className="text-center space-y-1 z-10">
           <p className={`text-xs font-semibold ${isHealing ? 'text-orange-400/90' : isLinting ? 'text-blue-400/90' : 'text-white/80'}`}>
-            {status === "synthesizing" ? meta.synthesizingText
+            {status === "planning" ? "Planner Model designing architectural chunks..."
+              : status === "synthesizing_module" ? `Synthesizing ${currentModule} (${moduleProgress.current}/${moduleProgress.total})...`
+              : status === "synthesizing" ? meta.synthesizingText
               : status === "validating" ? "Validating syntax and structural contracts..."
               : status === "semantic_validation" ? "LLM verifying user components..."
               : `Linter errors detected. Agent self-correcting (Attempt ${attempt} of 3)...`}

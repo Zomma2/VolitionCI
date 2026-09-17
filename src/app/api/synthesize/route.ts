@@ -74,79 +74,136 @@ export async function POST(req: NextRequest) {
           healingUserPromptFn = DOCKER_HEALING_USER_PROMPT;
         }
 
-        let currentMessages: any[] = [
-          { role: "system", content: initialSystemPrompt },
-          { role: "user", content: initialUserPrompt },
-        ];
+        let finalOutput = "";
+        let finalErrors: string[] = [];
+        let plan: string[] = ["Complete Architecture"];
 
-        sendEvent("status", { step: "synthesizing" });
+        // ── Phase 1: Planning (Modular Breakdown) ──
+        sendEvent("status", { step: "planning" });
+        try {
+          const plannerCompletion = await groq.chat.completions.create({
+            model: VALIDATOR_MODEL,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content: `You are an Infrastructure Planner. The user wants to deploy a ${archetype} architecture. Break the deployment down into 2 to 5 logical code modules (e.g., ["Provider Settings", "Networking", "Compute", "Database"]). Output strictly a JSON object: {"plan": ["module1", "module2", ...]}.`
+              },
+              {
+                role: "user",
+                content: `Context: ${repoContext}\nProvider: ${provider}\nAnswers: ${JSON.stringify(userAnswers)}`
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 200,
+          });
 
-        while (attempt <= MAX_RETRIES && !isValid) {
-          if (attempt > 0) {
-            sendEvent("status", { step: "self_healing", attempt });
+          sendEvent("usage", { model: VALIDATOR_MODEL, role: "Planner", usage: plannerCompletion.usage });
+          const parsed = JSON.parse(plannerCompletion.choices[0]?.message?.content || "{}");
+          if (parsed.plan && Array.isArray(parsed.plan)) {
+            plan = parsed.plan;
           }
+        } catch (e) {
+          console.error("Planner failed, falling back to monolithic", e);
+        }
 
-          const completion = await groq.chat.completions.create({
-            model: MODEL,
-            messages: currentMessages,
-            temperature: 0.15,
-            max_tokens: 1000, 
-          });
+        // ── Phase 2: Worker Loop (Iterative Synthesis) ──
+        for (let i = 0; i < plan.length; i++) {
+          const chunkName = plan[i];
+          sendEvent("status", { step: "synthesizing_module", module: chunkName, current: i + 1, total: plan.length });
 
-          sendEvent("usage", {
-            model: MODEL,
-            role: "Generator",
-            usage: completion.usage,
-          });
+          let chunkOutput = "";
+          let chunkAttempt = 0;
+          let chunkValid = false;
 
-          currentOutput = sanitizeOutput(completion.choices[0]?.message?.content ?? "", archetype);
+          while (chunkAttempt <= MAX_RETRIES && !chunkValid) {
+            if (chunkAttempt > 0) {
+              sendEvent("status", { step: "self_healing", attempt: chunkAttempt, module: chunkName });
+            }
 
-          sendEvent("status", { step: "validating" });
-          const errors = archetype === "terraform"
-            ? validateHclOutput(currentOutput)
-            : validateYamlOutput(currentOutput);
+            const isMonolithicFallback = plan.length === 1 && chunkName === "Complete Architecture";
+            
+            const basePrompt = isMonolithicFallback 
+              ? initialUserPrompt 
+              : `Generate ONLY the specific code for this module: "${chunkName}". Do NOT generate the entire architecture. Do NOT use markdown fences. Output raw code.\n\nContext: ${repoContext}\nAnswers: ${JSON.stringify(userAnswers)}\n\nPreviously Generated Code (Reference IDs/variables from here):\n${finalOutput || "None"}`;
 
-          // Semantic LLM Validation if schema passed
-          if (errors.length === 0) {
-            sendEvent("status", { step: "semantic_validation" });
-            const validatorCompletion = await groq.chat.completions.create({
-              model: VALIDATOR_MODEL,
-              messages: [
-                {
-                  role: "system",
-                  content: "You are an elite Semantic Validator. Ensure the generated code explicitly declares resources for ALL components requested by the user. If any requested module/service is missing from the code, respond exactly with 'MISSING: <details>'. If all requested components exist, respond exactly with 'VALID'. Do not explain."
-                },
-                {
-                  role: "user",
-                  content: `Requested Context:\n${repoContext}\n\nUser Answers:\n${JSON.stringify(userAnswers, null, 2)}\n\nGenerated Code:\n${currentOutput}`
-                }
-              ],
-              temperature: 0.1,
-              max_tokens: 300,
+            const currentMessages = chunkAttempt === 0 
+              ? [
+                  { role: "system" as const, content: initialSystemPrompt }, 
+                  { role: "user" as const, content: basePrompt }
+                ]
+              : [
+                  { role: "system" as const, content: healingSystemPrompt },
+                  { role: "user" as const, content: healingUserPromptFn(chunkOutput, finalErrors) }
+                ];
+
+            const completion = await groq.chat.completions.create({
+              model: MODEL,
+              messages: currentMessages,
+              temperature: 0.15,
+              max_tokens: 1000, 
             });
 
             sendEvent("usage", {
-              model: VALIDATOR_MODEL,
-              role: "Semantic Validator",
-              usage: validatorCompletion.usage,
+              model: MODEL,
+              role: `Worker (${chunkName})`,
+              usage: completion.usage,
             });
 
-            const valResult = (validatorCompletion.choices[0]?.message?.content || "").trim();
-            if (!valResult.startsWith("VALID")) {
-              errors.push(`Semantic Validation Failed: ${valResult}`);
+            chunkOutput = sanitizeOutput(completion.choices[0]?.message?.content ?? "", archetype);
+
+            sendEvent("status", { step: "validating" });
+            
+            // Validate the concatenated result so far
+            const testCode = finalOutput + "\n" + chunkOutput;
+            const errors = archetype === "terraform"
+              ? validateHclOutput(testCode)
+              : validateYamlOutput(testCode);
+
+            if (errors.length === 0) {
+              chunkValid = true;
+            } else {
+              // HCL allows partial code to pass syntax checks sometimes, but if it fundamentally breaks the file, we retry.
+              // If it's a structural error (like unclosed braces), the regex catches it.
+              finalErrors = errors;
+              chunkAttempt++;
             }
           }
+          finalOutput += (finalOutput ? "\n" : "") + chunkOutput;
+        }
 
-          if (errors.length === 0) {
-            isValid = true;
-          } else {
-            attempt++;
-            if (attempt <= MAX_RETRIES) {
-              currentMessages = [
-                { role: "system", content: healingSystemPrompt },
-                { role: "user", content: healingUserPromptFn(currentOutput, errors) },
-              ];
-            }
+        currentOutput = finalOutput;
+        isValid = finalErrors.length === 0;
+
+        // ── Phase 3: Semantic Validation ──
+        if (isValid) {
+          sendEvent("status", { step: "semantic_validation" });
+          const validatorCompletion = await groq.chat.completions.create({
+            model: VALIDATOR_MODEL,
+            messages: [
+              {
+                role: "system",
+                content: "You are an elite Semantic Validator. Ensure the generated code explicitly declares resources for ALL components requested by the user. If any requested module/service is missing, respond exactly with 'MISSING: <details>'. If all requested components exist, respond exactly with 'VALID'. Do not explain."
+              },
+              {
+                role: "user",
+                content: `Requested Context:\n${repoContext}\n\nUser Answers:\n${JSON.stringify(userAnswers, null, 2)}\n\nGenerated Code:\n${currentOutput}`
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 300,
+          });
+
+          sendEvent("usage", {
+            model: VALIDATOR_MODEL,
+            role: "Semantic Validator",
+            usage: validatorCompletion.usage,
+          });
+
+          const valResult = (validatorCompletion.choices[0]?.message?.content || "").trim();
+          if (!valResult.startsWith("VALID")) {
+            finalErrors.push(`Semantic Validation Failed: ${valResult}`);
+            isValid = false;
           }
         }
 

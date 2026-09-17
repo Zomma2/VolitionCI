@@ -10,7 +10,7 @@ export interface AgentQuestion {
 }
 
 export type Archetype = "pipeline" | "terraform" | "kubernetes" | "docker";
-export type WizardStatus = "idle" | "analyzing" | "synthesizing" | "validating" | "semantic_validation" | "self_healing" | "complete" | "error";
+export type WizardStatus = "idle" | "analyzing" | "planning" | "synthesizing_module" | "synthesizing" | "validating" | "semantic_validation" | "self_healing" | "complete" | "error";
 
 export interface WizardStore {
   step: 1 | 2 | 3 | 4;
