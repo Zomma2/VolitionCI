@@ -1,5 +1,6 @@
 import Wizard from "@/components/wizard/Wizard";
 import Image from "next/image";
+import logoImg from "../../public/logo.png";
 
 export default function Home() {
   return (
@@ -31,7 +32,7 @@ export default function Home() {
                 }}
               >
                 <Image 
-                  src="/logo.png" 
+                  src={logoImg} 
                   alt="VolitionCI Logo" 
                   width={28} 
                   height={28} 
@@ -69,7 +70,7 @@ export default function Home() {
         <div className="inline-flex items-center justify-center mb-4">
           <div className="relative p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] shadow-[0_0_35px_rgba(124,58,237,0.25)]">
             <Image
-              src="/logo.png"
+              src={logoImg}
               alt="VolitionCI"
               width={56}
               height={56}
@@ -97,7 +98,7 @@ export default function Home() {
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />
         <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="VolitionCI" width={14} height={14} className="object-contain opacity-40" />
+            <Image src={logoImg} alt="VolitionCI" width={14} height={14} className="object-contain opacity-40" />
             <span className="text-[11px] text-white/20">
               VolitionCI &copy; {new Date().getFullYear()}
             </span>
