@@ -88,42 +88,54 @@ export default function Step4Execution() {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let done = false;
+        let buffer = "";
 
         while (!done && isSubscribed) {
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
           if (value) {
-            const chunk = decoder.decode(value, { stream: true });
-            const events = chunk.split('\n\n');
-            for (const ev of events) {
-              if (ev.startsWith('event: status')) {
-                const dataStr = ev.split('\ndata: ')[1];
-                if (dataStr) {
-                  const parsed = JSON.parse(dataStr);
-                  setStatus(parsed.step);
-                  if (parsed.attempt) setAttempt(parsed.attempt);
-                  if (parsed.module) setCurrentModule(parsed.module);
-                  if (parsed.current) setModuleProgress({ current: parsed.current, total: parsed.total });
+            buffer += decoder.decode(value, { stream: true });
+            
+            let boundary = buffer.indexOf('\n\n');
+            while (boundary !== -1) {
+              const ev = buffer.slice(0, boundary);
+              buffer = buffer.slice(boundary + 2);
+              boundary = buffer.indexOf('\n\n');
+
+              if (!ev.trim()) continue;
+
+              try {
+                if (ev.startsWith('event: status')) {
+                  const dataStr = ev.split('\ndata: ')[1];
+                  if (dataStr) {
+                    const parsed = JSON.parse(dataStr);
+                    setStatus(parsed.step);
+                    if (parsed.attempt) setAttempt(parsed.attempt);
+                    if (parsed.module) setCurrentModule(parsed.module);
+                    if (parsed.current) setModuleProgress({ current: parsed.current, total: parsed.total });
+                  }
+                } else if (ev.startsWith('event: usage')) {
+                  const dataStr = ev.split('\ndata: ')[1];
+                  if (dataStr) {
+                    const parsed = JSON.parse(dataStr);
+                    setUsageLog(prev => [...prev, parsed]);
+                  }
+                } else if (ev.startsWith('event: complete')) {
+                  const dataStr = ev.split('\ndata: ')[1];
+                  if (dataStr) {
+                    const parsed = JSON.parse(dataStr);
+                    setGeneratedCode(parsed.code);
+                    setStatus("complete", parsed.warning || "");
+                  }
+                } else if (ev.startsWith('event: error')) {
+                  const dataStr = ev.split('\ndata: ')[1];
+                  if (dataStr) {
+                    const parsed = JSON.parse(dataStr);
+                    setStatus("error", parsed.message);
+                  }
                 }
-              } else if (ev.startsWith('event: usage')) {
-                const dataStr = ev.split('\ndata: ')[1];
-                if (dataStr) {
-                  const parsed = JSON.parse(dataStr);
-                  setUsageLog(prev => [...prev, parsed]);
-                }
-              } else if (ev.startsWith('event: complete')) {
-                const dataStr = ev.split('\ndata: ')[1];
-                if (dataStr) {
-                  const parsed = JSON.parse(dataStr);
-                  setGeneratedCode(parsed.code);
-                  setStatus("complete", parsed.warning || "");
-                }
-              } else if (ev.startsWith('event: error')) {
-                const dataStr = ev.split('\ndata: ')[1];
-                if (dataStr) {
-                  const parsed = JSON.parse(dataStr);
-                  setStatus("error", parsed.message);
-                }
+              } catch (parseError) {
+                console.error("SSE Parse Error:", parseError, "Event Data:", ev);
               }
             }
           }
