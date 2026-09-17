@@ -1,5 +1,5 @@
 import Wizard from "@/components/wizard/Wizard";
-import { Cpu } from "lucide-react";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -25,13 +25,19 @@ export default function Home() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <div 
-                className="w-8 h-8 rounded-xl flex items-center justify-center relative"
+                className="w-9 h-9 rounded-xl flex items-center justify-center relative overflow-hidden p-1 bg-white/[0.04] border border-white/[0.08]"
                 style={{ 
-                  background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-                  boxShadow: "0 0 20px rgb(124 58 237 / 0.5)"
+                  boxShadow: "0 0 20px rgb(124 58 237 / 0.3)"
                 }}
               >
-                <Cpu size={14} className="text-white" />
+                <Image 
+                  src="/logo.png" 
+                  alt="VolitionCI Logo" 
+                  width={28} 
+                  height={28} 
+                  className="object-contain"
+                  priority
+                />
               </div>
               <span className="font-bold text-[15px] tracking-tight">
                 Volition<span className="text-violet-400">CI</span>
@@ -59,14 +65,26 @@ export default function Home() {
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
       </header>
 
-      <div className="flex-shrink-0 relative z-10 pt-16 pb-12 text-center px-6">
+      <div className="flex-shrink-0 relative z-10 pt-10 pb-8 text-center px-6">
+        <div className="inline-flex items-center justify-center mb-4">
+          <div className="relative p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] shadow-[0_0_35px_rgba(124,58,237,0.25)]">
+            <Image
+              src="/logo.png"
+              alt="VolitionCI"
+              width={56}
+              height={56}
+              className="w-14 h-14 object-contain"
+              priority
+            />
+          </div>
+        </div>
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] text-white">
           Agentic DevSecOps <br/>
           <span className="text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #60a5fa 100%)" }}>
             Pipeline Generator
           </span>
         </h1>
-        <p className="mt-5 text-white/40 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
+        <p className="mt-4 text-white/40 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
           Autonomous repository analysis. Interactive architectural interrogation. Self-healing CI/CD synthesis.
         </p>
       </div>
@@ -78,9 +96,12 @@ export default function Home() {
       <footer className="flex-shrink-0 relative z-10">
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />
         <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="text-[11px] text-white/20">
-            VolitionCI &copy; {new Date().getFullYear()}
-          </span>
+          <div className="flex items-center gap-2">
+            <Image src="/logo.png" alt="VolitionCI" width={14} height={14} className="object-contain opacity-40" />
+            <span className="text-[11px] text-white/20">
+              VolitionCI &copy; {new Date().getFullYear()}
+            </span>
+          </div>
           <span className="text-[11px] text-white/20">
             Next.js · Groq · Monaco Editor · Tailwind CSS
           </span>

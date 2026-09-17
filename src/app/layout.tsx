@@ -13,9 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VolitionCI — AI-Powered CI/CD Pipeline Generator",
+  title: "VolitionCI — Autonomous DevSecOps & IaC Pipeline Generator",
   description:
-    "Generate production-ready GitHub Actions, GitLab CI, and proxy configurations instantly using Groq-powered Llama 3.3 70B.",
+    "Autonomous repository analysis, interactive architectural interrogation, and self-healing CI/CD, Terraform, and Kubernetes pipeline generator.",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -23,6 +28,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/logo.png" type="image/png" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
