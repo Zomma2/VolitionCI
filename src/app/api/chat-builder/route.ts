@@ -10,15 +10,32 @@ const GROQ_MODEL = "openai/gpt-oss-20b";
 
 export async function POST(req: NextRequest) {
   try {
-    const { history, currentConfig } = await req.json();
+    const { history, currentConfig, revision } = await req.json();
+    const isFirstTurn = revision === 0;
 
-    const systemPrompt = `You are an AI Architect helping a user configure their infrastructure or CI/CD pipeline.
-The user is selecting an 'archetype' (pipeline, terraform, kubernetes, docker), a 'targetPlatform' (e.g. GitHub Actions, AWS, Azure, Generic Kubernetes, Gitlab CI), a 'repoUrl' if mentioned, and a list of 'technologies'.
-Also, recommend helpful related tools (e.g., if they mention Next.js, recommend Sentry or Docker) and provide a slug from SimpleIcons (e.g., "sentry", "docker") and a hex color code without the hash (e.g., "362D59").
+    const systemPrompt = `You are a senior DevOps and Cloud Infrastructure Architect acting as a consultative expert.
+The user is configuring an infrastructure generation workflow. You must extract: an 'archetype' (pipeline, terraform, kubernetes, docker), a 'targetPlatform' (e.g. GitHub Actions, AWS, Azure, Generic Kubernetes, GitLab CI), a 'repoUrl' if mentioned, and a list of 'technologies'.
+
+${isFirstTurn ? `IMPORTANT -- FIRST INTERACTION PROTOCOL:
+This is the user's FIRST message. You must act as a consultative expert:
+1. Acknowledge what the user has described and confirm what you understood.
+2. Provide an initial draft config based on what you can confidently extract.
+3. Critically evaluate their input for ambiguities, missing requirements, or common pitfalls.
+4. At the END of your reply, ask exactly 1 to 2 targeted follow-up questions designed to extract specific, actionable information. Frame them as an expert would -- e.g., "Do you need a staging environment separate from production?" or "Should we include database migration steps in the pipeline?" or "Which AWS region and availability zone strategy do you prefer?"
+5. Also recommend 2 to 4 helpful tools with reasons.
+Do NOT ask generic questions. Each question must address a concrete gap in their specification that would change the generated output.` : `IMPORTANT -- REFINEMENT PROTOCOL:
+This is a follow-up revision. The user is answering your previous questions or making changes.
+1. Incorporate their answers into the configuration.
+2. Finalize the config with high confidence.
+3. In your reply, summarize the final configuration clearly so they can review it before proceeding.
+4. Do NOT ask further questions. Be conclusive.
+5. Update recommendations based on the refined context.`}
+
+Also, recommend helpful related tools and provide a slug from SimpleIcons (e.g., "sentry", "docker") and a hex color code without the hash (e.g., "362D59").
 
 Output MUST be a JSON object with this exact schema (do not use markdown formatting):
 {
-  "reply": "Your conversational response to the user",
+  "reply": "Your conversational response including follow-up questions on first turn",
   "config": {
     "archetype": "pipeline" | "terraform" | "kubernetes" | "docker",
     "targetPlatform": "string",
@@ -33,7 +50,7 @@ Output MUST be a JSON object with this exact schema (do not use markdown formatt
 Current Config Context (if any):
 ${JSON.stringify(currentConfig)}
 
-Analyze the entire conversation history and extract/update the configuration fields based on what the user wants. Always output valid JSON.`;
+Analyze the entire conversation history and extract/update the configuration fields based on what the user wants. Always output valid JSON. Do not use emojis anywhere in your output.`;
 
     const userMessages = history.map((h: any) => `${h.role}: ${h.content}`).join("\n");
     let parsed: any;
@@ -46,7 +63,7 @@ Analyze the entire conversation history and extract/update the configuration fie
 
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: userMessages }] }],
-        generationConfig: { maxOutputTokens: 1000, temperature: 0.2, responseMimeType: "application/json" }
+        generationConfig: { maxOutputTokens: 1200, temperature: 0.3, responseMimeType: "application/json" }
       });
       parsed = JSON.parse(result.response.text());
     } catch (geminiErr: any) {
@@ -58,8 +75,8 @@ Analyze the entire conversation history and extract/update the configuration fie
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessages }
         ],
-        temperature: 0.2,
-        max_tokens: 1000,
+        temperature: 0.3,
+        max_tokens: 1200,
         response_format: { type: "json_object" }
       });
       
@@ -74,4 +91,3 @@ Analyze the entire conversation history and extract/update the configuration fie
     return NextResponse.json({ reply: "I encountered an error analyzing your request.", config: null }, { status: 500 });
   }
 }
-

@@ -213,7 +213,7 @@ export default function Step1Ingest() {
       const res = await fetch("/api/chat-builder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: newHistory, currentConfig: chatConfig })
+        body: JSON.stringify({ history: newHistory, currentConfig: chatConfig, revision: chatRevisions })
       });
       const data = await res.json();
       if (data.config) {
