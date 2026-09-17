@@ -83,11 +83,10 @@ export async function POST(req: NextRequest) {
         try {
           const plannerCompletion = await groq.chat.completions.create({
             model: VALIDATOR_MODEL,
-            response_format: { type: "json_object" },
             messages: [
               {
                 role: "system",
-                content: `You are an Infrastructure Planner. The user wants to deploy a ${archetype} architecture. Break the deployment down into 2 to 5 logical code modules (e.g., ["Provider Settings", "Networking", "Compute", "Database"]). Output strictly a JSON object: {"plan": ["module1", "module2", ...]}.`
+                content: `You are an Infrastructure Planner. The user wants to deploy a ${archetype} architecture. Break the deployment down into 2 to 5 logical code modules (e.g., ["Provider Settings", "Networking", "Compute", "Database"]). Output strictly a JSON object with the format: {"plan": ["module1", "module2", ...]}. Do NOT use markdown formatting (\`\`\`json). Do NOT add any explanations.`
               },
               {
                 role: "user",
@@ -95,11 +94,14 @@ export async function POST(req: NextRequest) {
               }
             ],
             temperature: 0.1,
-            max_tokens: 200,
+            max_tokens: 400,
           });
 
           sendEvent("usage", { model: VALIDATOR_MODEL, role: "Planner", usage: plannerCompletion.usage });
-          const parsed = JSON.parse(plannerCompletion.choices[0]?.message?.content || "{}");
+          const rawContent = plannerCompletion.choices[0]?.message?.content || "{}";
+          const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+          const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : "{}");
+          
           if (parsed.plan && Array.isArray(parsed.plan)) {
             plan = parsed.plan;
           }
