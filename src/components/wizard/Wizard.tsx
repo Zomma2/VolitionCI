@@ -17,7 +17,7 @@ export default function Wizard() {
   const step = useWizardStore((state) => state.step);
 
   return (
-    <div className="w-full h-[600px] glass rounded-2xl p-6 relative overflow-hidden glow-violet-sm">
+    <div className="w-full min-h-[700px] h-[750px] glass rounded-2xl p-6 sm:p-7 relative overflow-hidden glow-violet-sm flex flex-col">
       <AnimatePresence mode="wait">
         {step === 1 && (
           <motion.div key="step1" variants={variants} initial="initial" animate="animate" exit="exit" className="h-full">

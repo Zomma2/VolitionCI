@@ -62,32 +62,32 @@ export default function Home() {
         <div className="h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
       </header>
 
-      <div className="flex-shrink-0 relative z-10 pt-10 pb-8 text-center px-6">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] shadow-[0_0_30px_rgba(124,58,237,0.15)] mb-6 hover:border-white/[0.14] transition-colors">
+      <div className="flex-shrink-0 relative z-10 pt-6 pb-5 text-center px-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] shadow-[0_0_30px_rgba(124,58,237,0.15)] mb-4 hover:border-white/[0.14] transition-colors">
           <Image
             src={logoImg}
             alt="VolitionCI"
-            width={16}
-            height={16}
+            width={14}
+            height={14}
             className="object-contain drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]"
             priority
           />
-          <span className="text-xs font-medium text-white/70">
+          <span className="text-[11px] font-medium text-white/70">
             Autonomous Delivery &amp; Cloud Infrastructure
           </span>
         </div>
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] text-white">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.1] text-white">
           Agentic DevSecOps <br/>
           <span className="text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #60a5fa 100%)" }}>
             Pipeline Generator
           </span>
         </h1>
-        <p className="mt-4 text-white/40 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
+        <p className="mt-2.5 text-white/40 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
           Autonomous repository analysis. Interactive architectural interrogation. Self-healing CI/CD synthesis.
         </p>
       </div>
 
-      <main className="flex-1 relative z-10 max-w-3xl mx-auto w-full px-6 pb-10">
+      <main className="flex-1 relative z-10 max-w-5xl xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pb-8">
         <Wizard />
       </main>
 

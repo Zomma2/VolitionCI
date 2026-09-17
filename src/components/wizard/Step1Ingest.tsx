@@ -315,7 +315,7 @@ export default function Step1Ingest() {
             Phase 3 IaC Ready
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           {ARCHETYPE_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const isSelected = archetype === opt.id;
@@ -324,14 +324,14 @@ export default function Step1Ingest() {
                 key={opt.id}
                 type="button"
                 onClick={() => handleArchetypeChange(opt.id)}
-                className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
                   isSelected 
                     ? "bg-violet-600/15 border-violet-500/50 text-white shadow-sm" 
                     : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:bg-white/[0.04] hover:text-white/80"
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <Icon size={16} className={isSelected ? "text-violet-400" : "text-white/40"} />
+                <div className="flex items-center justify-between mb-1.5">
+                  <Icon size={17} className={isSelected ? "text-violet-400" : "text-white/40"} />
                   {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />}
                 </div>
                 <div>
@@ -350,77 +350,90 @@ export default function Step1Ingest() {
         <button
           type="button"
           onClick={() => { setMode("chat"); setError(""); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${mode === "chat" ? "bg-white/10 text-white shadow" : "text-white/40 hover:text-white/70"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg transition-all ${mode === "chat" ? "bg-white/10 text-white shadow" : "text-white/40 hover:text-white/70"}`}
         >
-          <MessageSquare size={13} /> AI Builder
+          <MessageSquare size={14} /> AI Builder
         </button>
         <button
           type="button"
           onClick={() => { setMode("scan"); setError(""); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${mode === "scan" ? "bg-white/10 text-white shadow" : "text-white/40 hover:text-white/70"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg transition-all ${mode === "scan" ? "bg-white/10 text-white shadow" : "text-white/40 hover:text-white/70"}`}
         >
-          <Search size={13} /> Scan Repository
+          <Search size={14} /> Scan Repository
         </button>
         <button
           type="button"
           onClick={() => { setMode("manual"); setError(""); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all ${mode === "manual" ? "bg-white/10 text-white shadow" : "text-white/40 hover:text-white/70"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg transition-all ${mode === "manual" ? "bg-white/10 text-white shadow" : "text-white/40 hover:text-white/70"}`}
         >
-          <Grip size={13} /> Manual Selection
+          <Grip size={14} /> Manual Selection
         </button>
       </div>
 
       {mode === "chat" ? (
-        <div className="flex-1 flex flex-col min-h-0 bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pb-2 text-xs">
+        <div className="flex-1 flex flex-col min-h-0 bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3.5 pb-2 text-xs">
             {chatHistory.length === 0 && (
-               <div className="text-white/40 text-center mt-10">
-                 Describe what you want to build.<br/><br/>e.g., "I need a GitHub Actions pipeline for a Next.js and Prisma app"
+               <div className="text-white/40 text-center my-auto py-12">
+                 <p className="text-sm font-medium text-white/70 mb-1">Describe what you want to build</p>
+                 <p className="text-xs text-white/40">e.g., "I need a GitHub Actions pipeline for a Next.js and Prisma app deploying to AWS"</p>
                </div>
             )}
             {chatHistory.map((msg, idx) => (
                <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                 <div className={`p-2.5 rounded-xl max-w-[90%] ${msg.role === "user" ? "bg-violet-600/20 text-white border border-violet-500/20" : "bg-white/[0.04] text-white/80 border border-white/[0.05]"}`}>
+                 <div className={`p-3 rounded-xl max-w-[85%] ${msg.role === "user" ? "bg-violet-600/20 text-white border border-violet-500/20" : "bg-white/[0.04] text-white/80 border border-white/[0.05]"}`}>
                    {msg.content}
                  </div>
                </div>
             ))}
             
             {chatConfig && (
-              <div className="mt-4 p-3 bg-white/[0.02] border border-violet-500/20 rounded-xl space-y-3">
-                <div className="font-semibold text-violet-300 text-sm">Configuration Draft</div>
-                
-                <div className="space-y-1 bg-black/20 p-2 rounded-lg border border-white/5">
-                   <div className="text-white/50 text-[11px]">Target: <span className="text-white font-medium">{chatConfig.archetype} ({chatConfig.targetPlatform})</span></div>
-                   {chatConfig.repoUrl && <div className="text-white/50 text-[11px]">Repo: <span className="text-white font-medium">{chatConfig.repoUrl}</span></div>}
+              <div className="mt-4 p-4 bg-white/[0.02] border border-violet-500/25 rounded-xl space-y-3.5 shadow-sm">
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
+                  <div className="font-semibold text-violet-300 text-sm">Configuration Draft</div>
+                  <span className="text-[10px] text-white/40">Review and customize below</span>
                 </div>
                 
-                <div className="flex flex-wrap gap-1.5">
-                  {chatConfig.technologies?.map(tech => (
-                     <div key={tech} className="flex items-center gap-1.5 px-2 py-1 bg-violet-500/10 text-violet-200 rounded-md border border-violet-500/20">
-                       <Check size={10} /> {tech}
-                     </div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-black/25 p-3 rounded-lg border border-white/5">
+                   <div className="text-white/50 text-xs">Target: <span className="text-white font-medium capitalize">{chatConfig.archetype} ({chatConfig.targetPlatform})</span></div>
+                   {chatConfig.repoUrl ? (
+                     <div className="text-white/50 text-xs truncate">Repo: <span className="text-white font-medium">{chatConfig.repoUrl}</span></div>
+                   ) : (
+                     <div className="text-white/40 text-xs italic">No repository linked</div>
+                   )}
+                </div>
+                
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Detected Stack</div>
+                  <div className="flex flex-wrap gap-2">
+                    {chatConfig.technologies?.map(tech => (
+                       <div key={tech} className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-500/10 text-violet-200 rounded-md border border-violet-500/20 text-xs">
+                         <Check size={12} className="text-violet-400" /> {tech}
+                       </div>
+                    ))}
+                  </div>
                 </div>
                 
                 {chatConfig.recommendations && chatConfig.recommendations.length > 0 && (
                   <div className="pt-2 border-t border-white/[0.05] space-y-2">
-                    <div className="font-semibold text-white/70 text-[10px] uppercase tracking-wider">AI Recommendations</div>
-                    {chatConfig.recommendations.map(rec => {
-                       const isAdded = selectedTech.includes(rec.name);
-                       return (
-                         <div key={rec.name} className="flex items-start gap-2.5 p-2 bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-white/[0.05] rounded-lg">
-                            <button onClick={() => toggleTech(rec.name)} className={`mt-0.5 shrink-0 w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors ${isAdded ? 'bg-violet-500 border-violet-500' : 'border-white/20'}`}>
-                               {isAdded && <Check size={10} className="text-white" />}
-                            </button>
-                            <img src={`https://cdn.simpleicons.org/${rec.slug}/${rec.color}`} width={16} height={16} className="mt-0.5 opacity-90" alt={rec.name} />
-                            <div>
-                               <div className="font-medium text-white/90 text-xs">{rec.name}</div>
-                               <div className="text-[10px] text-white/50 leading-snug mt-0.5">{rec.reason}</div>
-                            </div>
-                         </div>
-                       );
-                    })}
+                    <div className="font-semibold text-white/70 text-[10px] uppercase tracking-wider">AI Recommended Tools &amp; Advice</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {chatConfig.recommendations.map(rec => {
+                         const isAdded = selectedTech.includes(rec.name);
+                         return (
+                           <div key={rec.name} className="flex items-start gap-2.5 p-2.5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-white/[0.05] rounded-xl">
+                              <button onClick={() => toggleTech(rec.name)} className={`mt-0.5 shrink-0 w-4 h-4 rounded flex items-center justify-center border transition-colors ${isAdded ? 'bg-violet-500 border-violet-500' : 'border-white/20 hover:border-white/40'}`}>
+                                 {isAdded && <Check size={11} className="text-white" />}
+                              </button>
+                              <img src={`https://cdn.simpleicons.org/${rec.slug}/${rec.color}`} width={18} height={18} className="mt-0.5 opacity-90 shrink-0" alt={rec.name} />
+                              <div className="min-w-0 flex-1">
+                                 <div className="font-medium text-white/90 text-xs">{rec.name}</div>
+                                 <div className="text-[11px] text-white/50 leading-snug mt-0.5">{rec.reason}</div>
+                              </div>
+                           </div>
+                         );
+                      })}
+                    </div>
                   </div>
                 )}
                 
