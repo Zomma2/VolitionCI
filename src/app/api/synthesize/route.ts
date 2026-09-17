@@ -27,7 +27,7 @@ import {
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 // Limit max_tokens to 1000 to respect free-tier OTPM limits on qwen and gpt-oss-120b
 const MODEL = "openai/gpt-oss-120b";
-const VALIDATOR_MODEL = "llama-3.1-8b-instant";
+const VALIDATOR_MODEL = "openai/gpt-oss-20b";
 const MAX_RETRIES = 3;
 
 export async function POST(req: NextRequest) {
