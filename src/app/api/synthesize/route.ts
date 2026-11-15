@@ -26,8 +26,7 @@ import {
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+export const maxDuration = 60;
 
 type ModelConfig = {
   provider: "gemini" | "mistral" | "cohere" | "groq";
@@ -74,6 +73,7 @@ async function runModelChain(
       let usage: any = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, total_time: 0 };
       
       if (config.provider === "gemini") {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
         const model = genAI.getGenerativeModel({ 
           model: config.model,
           systemInstruction: systemPrompt 
@@ -132,6 +132,7 @@ async function runModelChain(
         usage.completion_tokens = data.usage?.tokens?.output_tokens || 0;
         usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
       } else if (config.provider === "groq") {
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
         const completion = await groq.chat.completions.create({
           model: config.model,
           messages: [
@@ -329,9 +330,10 @@ export async function POST(req: NextRequest) {
 
   return new Response(stream, {
     headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
       "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   });
 }

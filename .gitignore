@@ -42,3 +42,5 @@ Thumbs.db
 # Markdown
 *.md
 !README.md
+.env*
+!.env.example

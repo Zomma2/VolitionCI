@@ -16,11 +16,12 @@ import {
   DOCKER_INTERROGATION_USER_PROMPT,
 } from "@/lib/prompts/dockerPrompts";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN || undefined });
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN || undefined });
     const { repoUrl, manualStack, archetype = "pipeline", targetPlatform = "GitHub Actions" } = await req.json();
 
     if (!repoUrl && (!manualStack || manualStack.length === 0)) {

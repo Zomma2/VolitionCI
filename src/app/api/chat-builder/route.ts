@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+export const maxDuration = 60;
 
 const GEMINI_MODEL = "models/gemini-3.6-flash";
 const GROQ_MODEL = "openai/gpt-oss-20b";
@@ -103,6 +102,7 @@ Analyze the entire conversation history and extract/update the configuration fie
     let parsed: any;
 
     try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
       const model = genAI.getGenerativeModel({ 
         model: GEMINI_MODEL,
         systemInstruction: systemPrompt 
@@ -120,6 +120,7 @@ Analyze the entire conversation history and extract/update the configuration fie
     } catch (geminiErr: any) {
       console.warn("Gemini failed in chat-builder, falling back to Groq:", geminiErr?.message);
       
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
       const completion = await groq.chat.completions.create({
         model: GROQ_MODEL,
         messages: [
