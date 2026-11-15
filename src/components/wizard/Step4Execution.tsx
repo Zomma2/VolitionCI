@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useWizardStore } from "@/store/useWizardStore";
+import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import TechIcon from "@/components/ui/TechIcon";
 import {
   Activity,
   AlertTriangle,
@@ -51,6 +53,8 @@ export default function Step4Execution() {
   const [currentModule, setCurrentModule] = useState("");
   const [moduleProgress, setModuleProgress] = useState({ current: 0, total: 0 });
 
+  const theme = ARCHETYPE_THEMES[archetype];
+
   const meta = {
     pipeline: {
       fileName: "pipeline.yml",
@@ -62,7 +66,7 @@ export default function Step4Execution() {
       fileName: "main.tf",
       filePath: "infra/main.tf",
       language: "hcl",
-      badge: "HCL Verified",
+      badge: "HCL2 Verified",
     },
     kubernetes: {
       fileName: "k8s-manifests.yaml",
@@ -226,7 +230,7 @@ export default function Step4Execution() {
             : 1;
 
     const phases = [
-      { id: 1, label: "Phase 1 · Modular Architecture Planner" },
+      { id: 1, label: `Phase 1 · Modular ${theme.shortLabel} Architecture Planner` },
       {
         id: 2,
         label:
@@ -239,24 +243,31 @@ export default function Step4Execution() {
 
     return (
       <div className="flex flex-col items-center justify-center h-full px-6">
-        <div className="w-full max-w-xl rounded-xl bg-[#090b0f] border border-white/[0.08] p-6 space-y-5">
+        <div
+          className={`w-full max-w-xl rounded-xl bg-[#090b0f] border p-6 space-y-5 ${theme.classes.draftPanelBorder}`}
+        >
           <div className="flex items-center justify-between border-b border-white/[0.07] pb-4">
-            <div className="space-y-0.5">
-              <h3 className="text-sm font-semibold text-white">
-                ReAct Multi-Agent Synthesis Pipeline
-              </h3>
-              <p className="font-mono text-[11px] text-zinc-400">
-                {isHealing
-                  ? `Self-healing syntax remediation in progress (Attempt ${attempt}/3)`
-                  : `Target: ${meta.filePath} (${targetPlatform || ciProvider})`}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-white/[0.1] flex items-center justify-center">
+                <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={18} />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold text-white">
+                  ReAct Multi-Agent {theme.shortLabel} Synthesis
+                </h3>
+                <p className="font-mono text-[11px] text-zinc-400">
+                  {isHealing
+                    ? `Self-healing syntax remediation in progress (Attempt ${attempt}/3)`
+                    : `Target: ${meta.filePath} (${targetPlatform || ciProvider})`}
+                </p>
+              </div>
             </div>
             {isHealing ? (
               <span className="px-2.5 py-1 rounded font-mono text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/25">
                 SELF-HEALING
               </span>
             ) : (
-              <Loader2 size={16} className="text-cyan-400 animate-spin" />
+              <Loader2 size={16} className={`${theme.classes.spinner} animate-spin`} />
             )}
           </div>
 
@@ -269,7 +280,7 @@ export default function Step4Execution() {
                   key={p.id}
                   className={`flex items-center justify-between p-3 rounded-lg border text-xs ${
                     active
-                      ? "bg-cyan-400/[0.07] border-cyan-400/35 text-white"
+                      ? theme.classes.techCardActive
                       : done
                         ? "bg-emerald-500/[0.05] border-emerald-500/20 text-zinc-300"
                         : "bg-zinc-900/40 border-white/[0.05] text-zinc-500"
@@ -279,7 +290,10 @@ export default function Step4Execution() {
                     {done ? (
                       <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
                     ) : active ? (
-                      <Loader2 size={14} className="text-cyan-400 animate-spin shrink-0" />
+                      <Loader2
+                        size={14}
+                        className={`${theme.classes.spinner} animate-spin shrink-0`}
+                      />
                     ) : (
                       <span className="w-3.5 h-3.5 rounded-full border border-zinc-700 shrink-0" />
                     )}
@@ -306,7 +320,9 @@ export default function Step4Execution() {
                   <span className="truncate">
                     {log.role} · <span className="text-zinc-500">{log.model}</span>
                   </span>
-                  <span className="text-cyan-300 shrink-0">{log.usage.total_tokens} tok</span>
+                  <span className={`${theme.classes.draftTitle} shrink-0`}>
+                    {log.usage.total_tokens} tok
+                  </span>
                 </div>
               ))}
             </div>
@@ -324,6 +340,7 @@ export default function Step4Execution() {
       {/* Editor Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-white/[0.08] bg-[#090b0f] shrink-0 z-10">
         <div className="flex items-center gap-2.5 min-w-0">
+          <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={15} />
           <span className="font-mono text-xs text-zinc-200 truncate">{meta.filePath}</span>
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[10px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -340,7 +357,7 @@ export default function Step4Execution() {
             onClick={() => setIsEditable((prev) => !prev)}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
               isEditable
-                ? "bg-cyan-400/15 border-cyan-400/40 text-cyan-200"
+                ? theme.classes.platformActive
                 : "bg-zinc-900 border-white/[0.08] text-zinc-400 hover:text-zinc-200"
             }`}
             title={isEditable ? "Lock editor" : "Enable inline editing"}
@@ -365,7 +382,7 @@ export default function Step4Execution() {
           <button
             type="button"
             onClick={handleDownload}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold text-zinc-950 bg-cyan-400 hover:bg-cyan-300 transition-colors"
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-colors ${theme.classes.primaryBtn}`}
           >
             <Download size={12} />
             <span>Download</span>
@@ -419,7 +436,7 @@ export default function Step4Execution() {
           <div className="shrink-0 bg-[#090b0f] border-t border-white/[0.08] px-4 py-2.5 overflow-y-auto max-h-[115px]">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
-                <Activity size={12} className="text-cyan-400" />
+                <Activity size={12} className={theme.classes.iconActive} />
                 <span className="font-mono text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
                   Multi-Provider Execution Telemetry
                 </span>
@@ -444,7 +461,7 @@ export default function Step4Execution() {
                   <div className="flex items-center gap-3 text-zinc-400 shrink-0">
                     <span>in:{log.usage.prompt_tokens}</span>
                     <span>out:{log.usage.completion_tokens}</span>
-                    <span className="text-cyan-300">{log.usage.total_tokens} tok</span>
+                    <span className={theme.classes.draftTitle}>{log.usage.total_tokens} tok</span>
                   </div>
                 </div>
               ))}

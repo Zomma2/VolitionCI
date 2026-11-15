@@ -2,63 +2,20 @@
 
 import { useState } from "react";
 import { useWizardStore } from "@/store/useWizardStore";
+import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import TechIcon from "@/components/ui/TechIcon";
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
-  Box,
   Check,
   CheckSquare,
-  Layers,
-  Server,
-  ShieldCheck,
 } from "lucide-react";
-
-const TOOL_DOMAINS: Record<string, string> = {
-  trivy: "aquasec.com",
-  cosign: "sigstore.dev",
-  trufflehog: "trufflesecurity.com",
-  gitleaks: "gitleaks.io",
-  semgrep: "semgrep.dev",
-  sonarqube: "sonarqube.org",
-  checkov: "checkov.io",
-  syft: "anchore.com",
-  snyk: "snyk.io",
-  dependabot: "github.com",
-  terraform: "hashicorp.com",
-  opentofu: "opentofu.org",
-  aws: "amazon.com",
-  s3: "aws.amazon.com",
-  dynamodb: "aws.amazon.com",
-  ecs: "aws.amazon.com",
-  eks: "aws.amazon.com",
-  azure: "microsoft.com",
-  blob: "azure.microsoft.com",
-  gcp: "cloud.google.com",
-  gcs: "cloud.google.com",
-  digitalocean: "digitalocean.com",
-  kubernetes: "kubernetes.io",
-  k8s: "kubernetes.io",
-  "ingress-nginx": "kubernetes.github.io",
-  nginx: "nginx.org",
-  traefik: "traefik.io",
-  istio: "istio.io",
-  linkerd: "linkerd.io",
-  helm: "helm.sh",
-  kustomize: "kustomize.io",
-  prometheus: "prometheus.io",
-  grafana: "grafana.com",
-  "cert-manager": "cert-manager.io",
-  docker: "docker.com",
-  buildx: "docker.com",
-  github: "github.com",
-  gitlab: "gitlab.com",
-  bitbucket: "atlassian.com",
-};
 
 export default function Step3Interrogate() {
   const {
     archetype,
+    targetPlatform,
     detectedStack,
     agentQuestions,
     userAnswers,
@@ -69,6 +26,7 @@ export default function Step3Interrogate() {
   } = useWizardStore();
   const [validationNotice, setValidationNotice] = useState(false);
 
+  const theme = ARCHETYPE_THEMES[archetype];
   const answeredCount = agentQuestions.filter((q) => Boolean(userAnswers[q.id])).length;
   const remainingCount = Math.max(0, agentQuestions.length - answeredCount);
 
@@ -82,50 +40,36 @@ export default function Step3Interrogate() {
     setStatus("synthesizing");
   };
 
-  const getToolDomain = (optionText: string) => {
-    const lower = optionText.toLowerCase();
-    for (const [key, domain] of Object.entries(TOOL_DOMAINS)) {
-      if (lower.includes(key)) return domain;
-    }
-    return null;
-  };
-
   const headerMeta = {
     pipeline: {
       title: "DevSecOps Pipeline Interrogation",
       subtitle:
-        "Select security gates, artifact signing, and deployment controls prior to code synthesis.",
-      icon: ShieldCheck,
+        "Select security gates, artifact signing, and deployment controls prior to workflow synthesis.",
     },
     terraform: {
       title: "Terraform State & Topology Parameters",
       subtitle:
         "Configure state locking backends, VPC subnet isolation, and KMS encryption posture.",
-      icon: Layers,
     },
     kubernetes: {
       title: "Kubernetes Workload & Policy Matrix",
       subtitle:
         "Define ingress controllers, HorizontalPodAutoscaler thresholds, and PodSecurity baselines.",
-      icon: Server,
     },
     docker: {
       title: "Docker Compose Runtime Topology",
       subtitle:
         "Specify bridge network isolation, persistent volume mounts, and healthcheck gates.",
-      icon: Box,
     },
   }[archetype];
-
-  const HeaderIcon = headerMeta.icon;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 pb-3 border-b border-white/[0.07]">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
-            <HeaderIcon className="text-cyan-400" size={18} />
-            {headerMeta.title}
+          <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2.5">
+            <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={19} />
+            <span>{headerMeta.title}</span>
           </h2>
           <p className="text-xs text-zinc-400">{headerMeta.subtitle}</p>
         </div>
@@ -141,7 +85,7 @@ export default function Step3Interrogate() {
                 applyDefaultAnswers();
                 setValidationNotice(false);
               }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-cyan-300 bg-cyan-400/10 hover:bg-cyan-400/15 border border-cyan-400/25 transition-colors"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${theme.classes.outlineBtn}`}
             >
               <CheckSquare size={12} />
               <span>Select Recommended</span>
@@ -154,15 +98,16 @@ export default function Step3Interrogate() {
         {detectedStack ? (
           <div className="p-3.5 rounded-lg bg-[#090b0f] border border-white/[0.07] space-y-2">
             <h3 className="text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider">
-              Detected Repository Stack
+              Detected Stack &amp; Target Context ({targetPlatform})
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {detectedStack.languages?.map((l: string) => (
                 <span
                   key={l}
-                  className="px-2 py-0.5 rounded font-mono text-[11px] bg-cyan-400/10 text-cyan-300 border border-cyan-400/20"
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[11px] border ${theme.classes.badge}`}
                 >
-                  {l}
+                  <TechIcon name={l} size={11} />
+                  <span>{l}</span>
                 </span>
               ))}
               {detectedStack.packageManagers?.map((p: string) => (
@@ -174,8 +119,9 @@ export default function Step3Interrogate() {
                 </span>
               ))}
               {detectedStack.hasDockerfile ? (
-                <span className="px-2 py-0.5 rounded font-mono text-[11px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                  Dockerfile Detected
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[11px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                  <TechIcon iconKey="docker" name="Dockerfile" size={11} />
+                  <span>Dockerfile Detected</span>
                 </span>
               ) : null}
             </div>
@@ -194,7 +140,9 @@ export default function Step3Interrogate() {
                     Q{qIdx + 1}
                   </span>
                   {q.category ? (
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-cyan-400">
+                    <span
+                      className={`font-mono text-[10px] uppercase tracking-wider ${theme.classes.iconActive}`}
+                    >
                       {q.category}
                     </span>
                   ) : null}
@@ -206,7 +154,6 @@ export default function Step3Interrogate() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {q.options.map((opt, optIdx) => {
                   const isSelected = userAnswers[q.id] === opt;
-                  const domain = getToolDomain(opt);
 
                   return (
                     <button
@@ -218,33 +165,27 @@ export default function Step3Interrogate() {
                       }}
                       className={`relative p-3 rounded-lg border flex items-center gap-3 text-left transition-all ${
                         isSelected
-                          ? "bg-cyan-400/10 border-cyan-400/45 text-white"
+                          ? theme.classes.techCardActive
                           : "bg-[#090b0f]/70 border-white/[0.07] text-zinc-300 hover:bg-zinc-900 hover:border-white/[0.15]"
                       }`}
                     >
                       {isSelected ? (
-                        <div className="absolute top-2.5 right-2.5 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center">
+                        <div
+                          className={`absolute top-2.5 right-2.5 w-4 h-4 rounded-full flex items-center justify-center ${theme.classes.dot}`}
+                        >
                           <Check size={10} className="text-zinc-950 stroke-[2.5]" />
                         </div>
                       ) : optIdx === 0 ? (
                         <span className="absolute top-2 right-2 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
-                          Default
+                          Recommended
                         </span>
                       ) : null}
 
-                      <div className="shrink-0 w-8 h-8 rounded-md bg-zinc-900 border border-white/[0.08] flex items-center justify-center overflow-hidden">
-                        {domain ? (
-                          <img
-                            src={`https://www.google.com/s2/favicons?sz=64&domain=${domain}`}
-                            alt=""
-                            className="w-4 h-4 object-contain"
-                          />
-                        ) : (
-                          <Box size={15} className="text-zinc-500" />
-                        )}
+                      <div className="shrink-0 w-8 h-8 rounded-md bg-zinc-900 border border-white/[0.08] flex items-center justify-center">
+                        <TechIcon name={opt} size={17} />
                       </div>
 
-                      <span className="text-xs font-medium leading-snug pr-5">{opt}</span>
+                      <span className="text-xs font-medium leading-snug pr-6">{opt}</span>
                     </button>
                   );
                 })}
@@ -288,7 +229,7 @@ export default function Step3Interrogate() {
         <button
           type="button"
           onClick={handleSynthesize}
-          className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs text-zinc-950 bg-cyan-400 hover:bg-cyan-300 transition-colors"
+          className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs transition-colors ${theme.classes.primaryBtn}`}
         >
           <span>
             Synthesize{" "}

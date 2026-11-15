@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useWizardStore, Archetype } from "@/store/useWizardStore";
 import { EXAMPLE_BLUEPRINTS } from "@/lib/examplesData";
+import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import TechIcon from "@/components/ui/TechIcon";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Clock, RotateCcw, Trash2, X } from "lucide-react";
 import Step1Ingest from "./Step1Ingest";
@@ -83,15 +85,22 @@ export default function Wizard() {
   } = useWizardStore();
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  const theme = ARCHETYPE_THEMES[archetype];
+
   useEffect(() => {
     hydrateHistory();
   }, [hydrateHistory]);
 
   return (
-    <div className="w-full min-h-[720px] h-[780px] studio-panel rounded-xl relative overflow-hidden flex flex-col">
+    <div className="w-full min-h-[750px] h-[810px] studio-panel rounded-xl relative overflow-hidden flex flex-col">
       <Suspense fallback={null}>
         <StudioUrlHydrator />
       </Suspense>
+
+      {/* Dynamic Per-Target Signature Top Accent Bar */}
+      <div
+        className={`h-[2px] w-full shrink-0 bg-gradient-to-r transition-all duration-300 ${theme.classes.topAccentBar}`}
+      />
 
       {/* Studio Command & Stage Header */}
       <div className="shrink-0 px-4 sm:px-6 py-3 border-b border-white/[0.08] bg-[#090b0f] flex flex-wrap items-center justify-between gap-3">
@@ -104,7 +113,7 @@ export default function Wizard() {
                 <div
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                     isActive
-                      ? "bg-cyan-400/10 text-cyan-300 border border-cyan-400/30"
+                      ? theme.classes.stepActive
                       : isDone
                         ? "text-emerald-400 bg-emerald-500/5 border border-emerald-500/20"
                         : "text-zinc-500 border border-transparent"
@@ -126,11 +135,13 @@ export default function Wizard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900 border border-white/[0.07] font-mono text-[11px] text-zinc-300">
-            <span className="text-zinc-500">target:</span>
-            <span className="capitalize">{archetype}</span>
-            <span className="text-zinc-600">/</span>
-            <span className="text-cyan-300">{targetPlatform}</span>
+          <span
+            className={`hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-md border font-mono text-[11px] transition-colors ${theme.classes.badge}`}
+          >
+            <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={13} />
+            <span className="font-semibold">{theme.shortLabel}</span>
+            <span className="opacity-50">/</span>
+            <span className="text-zinc-100">{targetPlatform}</span>
           </span>
 
           <button
@@ -145,7 +156,7 @@ export default function Wizard() {
             <Clock size={12} className="text-zinc-400" />
             <span>History</span>
             {savedRuns.length > 0 ? (
-              <span className="font-mono text-[10px] px-1 rounded bg-white/[0.08] text-cyan-300">
+              <span className="font-mono text-[10px] px-1 rounded bg-white/[0.08] text-zinc-200">
                 {savedRuns.length}
               </span>
             ) : null}
@@ -167,7 +178,7 @@ export default function Wizard() {
 
       {/* Saved Synthesis History Slide-Over */}
       {historyOpen ? (
-        <div className="absolute inset-x-0 top-[49px] bottom-0 z-30 bg-[#090b0f]/95 backdrop-blur-md p-5 sm:p-6 flex flex-col">
+        <div className="absolute inset-x-0 top-[51px] bottom-0 z-30 bg-[#090b0f]/95 backdrop-blur-md p-5 sm:p-6 flex flex-col">
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
             <div>
               <h3 className="text-sm font-semibold text-white">Local Synthesis History</h3>
@@ -196,55 +207,65 @@ export default function Wizard() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto py-4 space-y-2.5">
-              {savedRuns.map((run) => (
-                <div
-                  key={run.id}
-                  className="flex items-center justify-between gap-4 p-3.5 rounded-lg bg-zinc-900/70 border border-white/[0.08] hover:border-white/[0.16] transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-zinc-100 truncate">
-                        {run.title}
-                      </span>
-                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-cyan-400/10 text-cyan-300 border border-cyan-400/20 capitalize">
-                        {run.archetype}
-                      </span>
-                      <span className="font-mono text-[10px] text-zinc-400">
-                        {run.targetPlatform}
-                      </span>
+              {savedRuns.map((run) => {
+                const runTheme = ARCHETYPE_THEMES[run.archetype] || ARCHETYPE_THEMES.pipeline;
+                return (
+                  <div
+                    key={run.id}
+                    className="flex items-center justify-between gap-4 p-3.5 rounded-lg bg-zinc-900/70 border border-white/[0.08] hover:border-white/[0.16] transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <TechIcon
+                          iconKey={`target-${run.archetype}`}
+                          name={runTheme.name}
+                          size={14}
+                        />
+                        <span className="text-xs font-semibold text-zinc-100 truncate">
+                          {run.title}
+                        </span>
+                        <span
+                          className={`font-mono text-[10px] px-1.5 py-0.5 rounded border capitalize ${runTheme.classes.badge}`}
+                        >
+                          {run.archetype}
+                        </span>
+                        <span className="font-mono text-[10px] text-zinc-400">
+                          {run.targetPlatform}
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-mono text-zinc-500 mt-1">
+                        {new Date(run.createdAt).toLocaleString()} · {run.code.split("\n").length}{" "}
+                        lines
+                      </div>
                     </div>
-                    <div className="text-[11px] font-mono text-zinc-500 mt-1">
-                      {new Date(run.createdAt).toLocaleString()} · {run.code.split("\n").length}{" "}
-                      lines
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          loadBlueprintIntoEditor({
+                            title: run.title,
+                            archetype: run.archetype,
+                            targetPlatform: run.targetPlatform,
+                            code: run.code,
+                          });
+                          setHistoryOpen(false);
+                        }}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${runTheme.classes.primaryBtn}`}
+                      >
+                        Open in Editor
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteHistoryRun(run.id)}
+                        aria-label={`Delete ${run.title}`}
+                        className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        loadBlueprintIntoEditor({
-                          title: run.title,
-                          archetype: run.archetype,
-                          targetPlatform: run.targetPlatform,
-                          code: run.code,
-                        });
-                        setHistoryOpen(false);
-                      }}
-                      className="px-3 py-1.5 rounded-md text-xs font-medium text-zinc-950 bg-cyan-400 hover:bg-cyan-300 transition-colors"
-                    >
-                      Open in Editor
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteHistoryRun(run.id)}
-                      aria-label={`Delete ${run.title}`}
-                      className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { EXAMPLE_BLUEPRINTS, ExampleBlueprint } from "@/lib/examplesData";
+import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import TechIcon from "@/components/ui/TechIcon";
 import { Archetype } from "@/store/useWizardStore";
 import {
   CheckCheck,
@@ -121,6 +123,7 @@ export default function ExamplesBrowser() {
           <div className="lg:col-span-5 space-y-3">
             {filtered.map((bp) => {
               const isSelected = bp.id === activeBlueprint.id;
+              const bpTheme = ARCHETYPE_THEMES[bp.archetype];
               return (
                 <button
                   key={bp.id}
@@ -128,13 +131,18 @@ export default function ExamplesBrowser() {
                   onClick={() => setSelectedId(bp.id)}
                   className={`w-full text-left p-4 rounded-xl border transition-all space-y-2.5 ${
                     isSelected
-                      ? "bg-[#0d0f14] border-cyan-400/50 shadow-[0_0_0_1px_rgba(34,211,238,0.15)]"
+                      ? bpTheme.classes.cardActive
                       : "bg-[#0d0f14]/60 border-white/[0.07] hover:border-white/[0.16] hover:bg-[#0d0f14]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded bg-zinc-900 text-cyan-300 border border-white/[0.08]">
-                      {bp.archetype} · {bp.targetPlatform}
+                    <span
+                      className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase px-2 py-0.5 rounded border ${bpTheme.classes.badge}`}
+                    >
+                      <TechIcon iconKey={`target-${bp.archetype}`} name={bpTheme.name} size={12} />
+                      <span>
+                        {bp.archetype} · {bp.targetPlatform}
+                      </span>
                     </span>
                     <span className="font-mono text-[11px] text-zinc-500">{bp.fileName}</span>
                   </div>
@@ -172,7 +180,7 @@ export default function ExamplesBrowser() {
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/?blueprint=${activeBlueprint.id}#studio`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-zinc-950 bg-cyan-400 hover:bg-cyan-300 transition-colors"
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${ARCHETYPE_THEMES[activeBlueprint.archetype].classes.primaryBtn}`}
                   >
                     <Terminal size={12} />
                     <span>Open in Studio Editor</span>

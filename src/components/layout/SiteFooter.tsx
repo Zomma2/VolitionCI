@@ -151,8 +151,8 @@ export default function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-[11px] text-zinc-500">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="mt-10 pt-6 border-t border-white/[0.06] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-[11px] text-zinc-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
             <span>&copy; {new Date().getFullYear()} VolitionCI. Open-source DevSecOps platform.</span>
             <span className="hidden sm:inline text-zinc-700">|</span>
             <span className="inline-flex items-center gap-1.5 text-zinc-400">
@@ -160,8 +160,19 @@ export default function SiteFooter() {
               Zero-Trust OIDC &amp; Least-Privilege Baselines
             </span>
           </div>
-          <div className="font-mono text-[11px] text-zinc-500">
-            Next.js 16 App Router · Multi-Provider LLM Chain · AST Validation
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+            <span className="text-zinc-300 font-medium">Designed by Omar Hazem</span>
+            <span className="text-zinc-700">·</span>
+            <a
+              href="https://meetomarhazem.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-white/[0.09] hover:border-cyan-400/40 text-cyan-300 hover:text-cyan-200 transition-colors"
+            >
+              <span>meetomarhazem.com</span>
+              <ArrowUpRight size={11} />
+            </a>
           </div>
         </div>
       </div>

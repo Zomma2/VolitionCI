@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Wizard from "@/components/wizard/Wizard";
 import { EXAMPLE_BLUEPRINTS } from "@/lib/examplesData";
+import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import TechIcon from "@/components/ui/TechIcon";
 import {
   ArrowRight,
   BookOpen,
@@ -254,48 +256,60 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {featuredBlueprints.map((bp) => (
-              <div
-                key={bp.id}
-                className="p-5 rounded-xl bg-[#0d0f14] border border-white/[0.08] flex flex-col justify-between space-y-5"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded bg-cyan-400/10 text-cyan-300 border border-cyan-400/20">
-                      {bp.archetype} · {bp.targetPlatform}
-                    </span>
-                    <span className="font-mono text-[11px] text-zinc-500">{bp.filePath}</span>
+            {featuredBlueprints.map((bp) => {
+              const bpTheme = ARCHETYPE_THEMES[bp.archetype];
+              return (
+                <div
+                  key={bp.id}
+                  className="p-5 rounded-xl bg-[#0d0f14] border border-white/[0.08] flex flex-col justify-between space-y-5"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase px-2 py-0.5 rounded border ${bpTheme.classes.badge}`}
+                      >
+                        <TechIcon
+                          iconKey={`target-${bp.archetype}`}
+                          name={bpTheme.name}
+                          size={12}
+                        />
+                        <span>
+                          {bp.archetype} · {bp.targetPlatform}
+                        </span>
+                      </span>
+                      <span className="font-mono text-[11px] text-zinc-500">{bp.filePath}</span>
+                    </div>
+
+                    <h3 className="text-sm font-semibold text-zinc-100">{bp.title}</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">{bp.summary}</p>
+
+                    <ul className="space-y-1.5 pt-1">
+                      {bp.highlights.slice(0, 2).map((h) => (
+                        <li key={h} className="flex items-start gap-2 text-[11px] text-zinc-300">
+                          <CheckCircle2 size={13} className="text-emerald-400 mt-0.5 shrink-0" />
+                          <span>{h}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
-                  <h3 className="text-sm font-semibold text-zinc-100">{bp.title}</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">{bp.summary}</p>
-
-                  <ul className="space-y-1.5 pt-1">
-                    {bp.highlights.slice(0, 2).map((h) => (
-                      <li key={h} className="flex items-start gap-2 text-[11px] text-zinc-300">
-                        <CheckCircle2 size={13} className="text-emerald-400 mt-0.5 shrink-0" />
-                        <span>{h}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="pt-3 border-t border-white/[0.07] flex items-center gap-2">
+                    <Link
+                      href={`/?blueprint=${bp.id}#studio`}
+                      className={`flex-1 text-center py-2 px-3 rounded-md text-xs font-semibold transition-colors ${bpTheme.classes.primaryBtn}`}
+                    >
+                      Open in Editor
+                    </Link>
+                    <Link
+                      href={`/?blueprint=${bp.id}&mode=customize#studio`}
+                      className="flex-1 text-center py-2 px-3 rounded-md text-xs font-medium text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.09] transition-colors"
+                    >
+                      Customize with AI
+                    </Link>
+                  </div>
                 </div>
-
-                <div className="pt-3 border-t border-white/[0.07] flex items-center gap-2">
-                  <Link
-                    href={`/?blueprint=${bp.id}#studio`}
-                    className="flex-1 text-center py-2 px-3 rounded-md text-xs font-semibold text-zinc-950 bg-cyan-400 hover:bg-cyan-300 transition-colors"
-                  >
-                    Open in Editor
-                  </Link>
-                  <Link
-                    href={`/?blueprint=${bp.id}&mode=customize#studio`}
-                    className="flex-1 text-center py-2 px-3 rounded-md text-xs font-medium text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.09] transition-colors"
-                  >
-                    Customize with AI
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
