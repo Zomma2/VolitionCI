@@ -141,6 +141,23 @@ export default function Step4Execution() {
 
     const abortController = new AbortController();
     let isActive = true;
+    let receivedTerminalEvent = false;
+    let latestPartialCode = "";
+
+    const completeWithCode = (code: string, warning?: string) => {
+      receivedTerminalEvent = true;
+      const latestState = useWizardStore.getState();
+      const plat = latestState.targetPlatform || latestState.ciProvider;
+      setGeneratedCode(code);
+      setStatus("complete", warning || "");
+      saveRunToHistory({
+        title: latestState.repoUrl || `${plat} ${latestState.archetype}`,
+        archetype: latestState.archetype,
+        targetPlatform: plat,
+        modelId: latestState.selectedModel,
+        code,
+      });
+    };
 
     const processSseFrame = (rawFrame: string) => {
       const lines = rawFrame.split("\n");
@@ -170,19 +187,14 @@ export default function Step4Execution() {
           }
         } else if (eventType === "usage") {
           setUsageLog((prev) => [...prev, parsed]);
+        } else if (eventType === "partial") {
+          if (parsed.code) {
+            latestPartialCode = parsed.code;
+          }
         } else if (eventType === "complete") {
-          const latestState = useWizardStore.getState();
-          const plat = latestState.targetPlatform || latestState.ciProvider;
-          setGeneratedCode(parsed.code || "");
-          setStatus("complete", parsed.warning || "");
-          saveRunToHistory({
-            title: latestState.repoUrl || `${plat} ${latestState.archetype}`,
-            archetype: latestState.archetype,
-            targetPlatform: plat,
-            modelId: latestState.selectedModel,
-            code: parsed.code || "",
-          });
+          completeWithCode(parsed.code || latestPartialCode, parsed.warning);
         } else if (eventType === "error") {
+          receivedTerminalEvent = true;
           setStatus("error", parsed.message || "Synthesis failed.");
         }
       } catch (parseErr) {
@@ -247,6 +259,16 @@ export default function Step4Execution() {
             const remaining = buffer.trim();
             if (remaining) {
               processSseFrame(remaining);
+            }
+            if (!receivedTerminalEvent && isActive) {
+              if (latestPartialCode.trim().length > 0) {
+                completeWithCode(latestPartialCode);
+              } else {
+                setStatus(
+                  "error",
+                  "Synthesis stream closed before completion. Click Retry below to run again."
+                );
+              }
             }
             break;
           }

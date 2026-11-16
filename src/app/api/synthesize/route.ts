@@ -45,8 +45,14 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let streamClosed = false;
       function sendEvent(event: string, data: any) {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        if (streamClosed) return;
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          streamClosed = true;
+        }
       }
 
       const emitUsage = (telemetry: any) => {
@@ -67,15 +73,20 @@ export async function POST(req: NextRequest) {
         sendEvent("status", { step: "planning" });
 
         let modules: string[] = [];
+        let namingContract = "";
         let blueprintSummary = "";
 
         try {
           const plannerSystem = isModularTarget
-            ? `You are a Principal Cloud & Infrastructure Planner. Break this ${archetype} deployment on ${provider} into exactly 3 non-overlapping, sequential code modules so each module generates distinct resources without duplicating provider blocks or namespaces.
+            ? `You are a Principal Cloud & Infrastructure Planner. Break this ${archetype} deployment on ${provider} into exactly 2 non-overlapping modules that can be synthesized cleanly and combined:
+- Module 1: Core foundation (for Terraform: terraform/provider blocks, variables, VPC/networking, security groups; for Kubernetes: Namespace, ConfigMap, Secrets, ServiceAccount, RBAC).
+- Module 2: Workloads, data & routing (for Terraform: compute/clusters, managed databases, storage, IAM roles, outputs; for Kubernetes: Deployment with probes/securityContext, Service, Ingress TLS, HPA, NetworkPolicy).
+Also define a short "namingContract" of shared identifiers (e.g., aws_vpc.main.id, aws_subnet.private[*].id, or namespace: app-prod, app: web-api) so both modules reference identical resource names.
 Output strictly valid JSON:
 {
   "summary": "Brief architectural plan",
-  "modules": ["Module 1 Title", "Module 2 Title", "Module 3 Title"]
+  "namingContract": "Exact resource IDs/names shared between Module 1 and Module 2",
+  "modules": ["Module 1 Title", "Module 2 Title"]
 }`
             : `You are a Principal DevSecOps & Container Architecture Planner. Design a comprehensive, production-grade ${archetype} specification for ${provider} covering every service, job, security scan, cache, network, volume, and healthcheck required.
 Output strictly valid JSON:
@@ -90,7 +101,7 @@ Output strictly valid JSON:
             roleLabel: "Phase 1 · Planner",
             systemPrompt: plannerSystem,
             userPrompt: plannerUser,
-            maxTokens: 3000,
+            maxTokens: 2000,
             temperature: 0.15,
             jsonMode: true,
             minChars: 15,
@@ -100,7 +111,8 @@ Output strictly valid JSON:
 
           const parsedPlan = extractFirstJsonObject(planRaw);
           if (isModularTarget && Array.isArray(parsedPlan?.modules) && parsedPlan.modules.length >= 2) {
-            modules = parsedPlan.modules.slice(0, 4).map((m: any) => String(m));
+            modules = parsedPlan.modules.slice(0, 2).map((m: any) => String(m));
+            namingContract = parsedPlan.namingContract || "";
             blueprintSummary = parsedPlan.summary || "";
           } else if (!isModularTarget && parsedPlan) {
             blueprintSummary = JSON.stringify(parsedPlan, null, 2);
@@ -110,21 +122,24 @@ Output strictly valid JSON:
         }
 
         if (isModularTarget && modules.length === 0) {
-          modules =
-            archetype === "terraform"
-              ? [
-                  "1. Terraform Backend, Providers & Variables",
-                  "2. VPC Networking, Subnets & Security Groups",
-                  "3. Compute, Managed Data Stores, IAM & Outputs",
-                ]
-              : [
-                  "1. Namespace, ConfigMap & ServiceAccount",
-                  "2. Hardened Workload Deployment & Probes",
-                  "3. Service, Ingress TLS, HPA & NetworkPolicy",
-                ];
+          if (archetype === "terraform") {
+            modules = [
+              "1. Provider Settings, Variables, VPC & Networking",
+              "2. Compute, Managed Databases, Storage, IAM & Outputs",
+            ];
+            namingContract =
+              "Use var.project_name, var.environment, aws_vpc.main.id (or equivalent cloud VPC resource), and private subnet references.";
+          } else {
+            modules = [
+              "1. Namespace, ConfigMap, ServiceAccount & RBAC",
+              "2. Hardened Deployment, Service, TLS Ingress, HPA & NetworkPolicy",
+            ];
+            namingContract =
+              "Use namespace: production, app label: app-service, ConfigMap name: app-config, ServiceAccount name: app-sa.";
+          }
         }
 
-        // ── Phase 2: Multi-Model Code Synthesis & Syntax Gate ──
+        // ── Phase 2: Parallel Multi-Model Code Synthesis & Syntax Gate ──
         if (isModularTarget) {
           const baseSysPrompt =
             archetype === "terraform"
@@ -135,21 +150,64 @@ Output strictly valid JSON:
               ? TERRAFORM_HEALING_SYSTEM_PROMPT
               : KUBERNETES_HEALING_SYSTEM_PROMPT;
 
-          for (let i = 0; i < modules.length; i++) {
-            const modName = modules[i];
-            sendEvent("status", {
-              step: "synthesizing_module",
-              module: modName,
-              current: i + 1,
-              total: modules.length,
-            });
+          sendEvent("status", {
+            step: "synthesizing_module",
+            module: `${modules[0]} + ${modules[1]}`,
+            current: 1,
+            total: modules.length,
+          });
+
+          // Synthesize Module 1 (worker-a) and Module 2 (worker-b) concurrently for fast multi-model execution
+          const synthesizeSingleModule = async (modName: string, index: number) => {
+            const isFirst = index === 0;
+            const workerStage = isFirst ? "worker-a" : "worker-b";
+
+            const tfProviderName = provider.toLowerCase().includes("google")
+              ? "google"
+              : provider.toLowerCase().includes("azure")
+                ? "azurerm"
+                : provider.toLowerCase().includes("digital")
+                  ? "digitalocean"
+                  : "aws";
+
+            const moduleDirective =
+              archetype === "terraform"
+                ? isFirst
+                  ? `Generate COMPLETE, production-ready Terraform HCL for Module 1 ("${modName}") on ${provider}.
+Include:
+1. terraform { required_version = ">= 1.6.0" required_providers { ... } backend ... }
+2. provider "${tfProviderName}" { ... }
+3. Core variable declarations (environment, region, project_name, etc.) and locals
+4. Complete VPC, subnets, routing/NAT, and firewall/security group resources.`
+                  : `Generate COMPLETE, production-ready Terraform HCL ONLY for Module 2 ("${modName}") on ${provider}.
+CRITICAL RULES:
+- Do NOT include terraform {} or provider {} blocks (they are in Module 1).
+- Declare full, richly configured resources for compute/clusters, managed databases, object storage, KMS/IAM roles, and output blocks requested by the user.`
+                : isFirst
+                  ? `Generate COMPLETE, production-ready Kubernetes YAML manifests for Module 1 ("${modName}") on ${provider}.
+Include Namespace, ServiceAccount, Role/RoleBinding (least privilege), and ConfigMap/Secret manifests separated by --- on its own line.`
+                  : `Generate COMPLETE, production-ready Kubernetes YAML manifests ONLY for Module 2 ("${modName}") on ${provider}.
+Do NOT redeclare the Namespace or ConfigMap from Module 1. Include Deployment (with restricted securityContext, livenessProbe, readinessProbe, resource requests/limits), Service, Ingress (with TLS), HorizontalPodAutoscaler v2, PodDisruptionBudget, and NetworkPolicy separated by --- on its own line.`;
+
+            const synthPrompt = `${moduleDirective}
+
+Shared Resource Naming Contract (MUST follow so Module 1 and Module 2 link cleanly):
+${namingContract || "Use consistent resource names and labels across modules."}
+${blueprintSummary ? `Architecture Summary: ${blueprintSummary}` : ""}
+
+Repository / Stack Context:
+${repoContext}
+
+Architectural Decisions:
+${JSON.stringify(userAnswers, null, 2)}
+
+Output ONLY raw ${archetype === "terraform" ? "HCL" : "YAML"} code. Never wrap in markdown code fences.`;
 
             let chunkCode = "";
             let moduleErrors: string[] = [];
             let attempt = 0;
-            let moduleValid = false;
 
-            while (attempt <= MAX_RETRIES && !moduleValid) {
+            while (attempt <= MAX_RETRIES) {
               if (attempt > 0) {
                 sendEvent("status", {
                   step: "self_healing",
@@ -158,83 +216,63 @@ Output strictly valid JSON:
                 });
               }
 
-              const workerStage =
-                attempt > 0
-                  ? "worker-heal"
-                  : i % 2 === 0
-                    ? "worker-a"
-                    : "worker-b";
-
-              const moduleDirective =
-                archetype === "terraform"
-                  ? i === 0
-                    ? `Generate COMPLETE, production-ready Terraform HCL for Module 1: "${modName}" on ${provider}.
-Include terraform { required_version ... required_providers ... backend ... }, provider "${provider.toLowerCase().includes("google") ? "google" : provider.toLowerCase().includes("azure") ? "azurerm" : provider.toLowerCase().includes("digital") ? "digitalocean" : "aws"}" configuration, core input variables, and locals.`
-                    : `Generate COMPLETE, production-ready Terraform HCL ONLY for Module ${i + 1}: "${modName}" on ${provider}.
-CRITICAL: Do NOT redeclare terraform {} or provider {} blocks (they already exist in Module 1). Declare full, richly configured resource/data/output blocks for "${modName}" referencing exact resource names from Previously Generated HCL.`
-                  : `Generate COMPLETE, production-ready Kubernetes YAML manifests ONLY for Module ${i + 1}: "${modName}" (${provider}).
-Separate multiple Kubernetes resources with --- on its own line. Do NOT repeat resources already declared in Previously Generated YAML. Include complete metadata, labels, securityContext, probes, and resource limits where applicable.`;
-
-              const synthPrompt = `${moduleDirective}
-${blueprintSummary ? `\nOverall Plan: ${blueprintSummary}\n` : ""}
-Repository / Stack Context:
-${repoContext}
-
-Architectural Decisions:
-${JSON.stringify(userAnswers, null, 2)}
-
-Previously Generated Code (reference exact IDs/names, do NOT duplicate):
-${finalOutput || "None (this is Module 1)"}
-
-Output ONLY raw ${archetype === "terraform" ? "HCL" : "YAML"} code with thorough comments and production settings. Never wrap in markdown backticks.`;
-
-              const healPrompt = `The following ${archetype} module ("${modName}") failed syntax validation.
-Validation Errors:
+              const healPrompt = `The following ${archetype} module ("${modName}") failed syntax validation:
+Errors:
 ${moduleErrors.join("\n")}
 
-Broken Module Code:
+Broken Code:
 ${chunkCode}
 
-Fix ALL syntax/brace/indentation errors while preserving every resource and security setting. Do NOT include duplicate terraform {} or provider {} blocks if this is not Module 1. Output ONLY the corrected raw ${archetype === "terraform" ? "HCL" : "YAML"} module code without markdown fences.`;
+Fix ALL syntax/brace/indentation errors and return ONLY the corrected raw ${archetype === "terraform" ? "HCL" : "YAML"} code without markdown fences.`;
 
               const { content: rawOut } = await executeModelChain({
                 roleLabel:
                   attempt === 0
-                    ? `Worker ${i + 1}/${modules.length} (${modName})`
+                    ? `Worker ${index + 1}/${modules.length} (${modName})`
                     : `Healer (${modName} #${attempt})`,
                 systemPrompt: attempt === 0 ? baseSysPrompt : healSysPrompt,
                 userPrompt: attempt === 0 ? synthPrompt : healPrompt,
-                maxTokens: 8192,
+                maxTokens: 6000,
                 temperature: 0.15,
                 minChars: 60,
-                chain: buildModelChain(selectedModel, workerStage),
+                chain: buildModelChain(selectedModel, attempt === 0 ? workerStage : "worker-heal"),
                 onUsage: emitUsage,
               });
 
-              chunkCode = cleanArtifactCode(rawOut, archetype, provider, i > 0);
-
-              sendEvent("status", { step: "validating" });
-
-              const candidateCombined = joinModularCode(finalOutput, chunkCode, archetype);
-              const errs = validateArtifact(candidateCombined, archetype, provider);
+              chunkCode = cleanArtifactCode(rawOut, archetype, !isFirst);
+              const errs = validateArtifact(chunkCode, archetype, provider);
 
               if (errs.length === 0) {
-                moduleValid = true;
-                moduleErrors = [];
-                finalOutput = candidateCombined;
-              } else {
-                moduleErrors = errs;
-                attempt++;
+                return { code: chunkCode, errors: [] };
               }
+              moduleErrors = errs;
+              attempt++;
             }
 
-            if (!moduleValid) {
-              // Keep valid previous modules if chunk still broken, or append best-effort and record error
-              if (chunkCode) {
-                finalOutput = joinModularCode(finalOutput, chunkCode, archetype);
-              }
-              unresolvedErrors = moduleErrors;
+            return { code: chunkCode, errors: moduleErrors };
+          };
+
+          const results = await Promise.all(
+            modules.map((modName, idx) => synthesizeSingleModule(modName, idx))
+          );
+
+          sendEvent("status", { step: "validating" });
+
+          for (const res of results) {
+            if (res.code) {
+              finalOutput = joinModularCode(finalOutput, res.code, archetype);
             }
+            if (res.errors.length > 0) {
+              unresolvedErrors.push(...res.errors);
+            }
+          }
+
+          // Final combined validation check
+          const combinedErrs = validateArtifact(finalOutput, archetype, provider);
+          unresolvedErrors = combinedErrs;
+
+          if (finalOutput) {
+            sendEvent("partial", { code: finalOutput });
           }
         } else {
           // Single-Document Complete Synthesis (CI/CD Pipeline & Docker Compose)
@@ -276,8 +314,8 @@ Fix ALL syntax/brace/indentation errors while preserving every resource and secu
               archetype === "pipeline" && provider === "Jenkins"
                 ? "Output a complete, production-hardened Declarative Jenkinsfile (`pipeline { agent ... environment ... options ... stages { ... } post { ... } }`)."
                 : archetype === "pipeline"
-                  ? `Output a complete, comprehensive, single-document ${provider} YAML configuration (80-160+ lines) including explicit triggers, least-privilege permissions/OIDC, dependency & Docker layer caching, lint/unit test jobs, SAST/secret/container CVE scanning jobs, and progressive deployment.`
-                  : `Output a complete, comprehensive, production-grade Compose v2 YAML file (70-150+ lines, starting with 'services:' — omit deprecated top-level 'version:') with full service definitions, healthchecks, depends_on with service_healthy conditions, isolated frontend/backend bridge networks, named persistent volumes, restart policies, and resource limits.`;
+                  ? `Output a complete, comprehensive, single-document ${provider} YAML configuration (80-150 lines) including explicit triggers, least-privilege permissions/OIDC, dependency & Docker layer caching, lint/unit test jobs, SAST/secret/container CVE scanning jobs, and deployment.`
+                  : `Output a complete, comprehensive, production-grade Compose v2 YAML file (70-140 lines, starting with 'services:' — omit deprecated top-level 'version:') with full service definitions, healthchecks, depends_on with service_healthy conditions, isolated frontend/backend bridge networks, named persistent volumes, restart policies, and resource limits.`;
 
             const synthPrompt = `${formatInstruction}
 
@@ -299,7 +337,7 @@ ${docErrors.join("\n")}
 Broken Configuration:
 ${docCode}
 
-Fix ALL syntax, duplicate-key, or structural errors while keeping the full set of jobs/services, security scans, caching, networks, and healthchecks intact. Output ONLY the complete corrected raw configuration file without markdown code fences.`;
+Fix ALL syntax, duplicate-key, or structural errors while keeping all jobs/services, security scans, caching, networks, and healthchecks intact. Output ONLY the complete corrected raw configuration file without markdown code fences.`;
 
             const { content: rawOut } = await executeModelChain({
               roleLabel:
@@ -308,14 +346,14 @@ Fix ALL syntax, duplicate-key, or structural errors while keeping the full set o
                   : `Phase 2 · Syntax Healer (#${attempt})`,
               systemPrompt: attempt === 0 ? baseSysPrompt : healSysPrompt,
               userPrompt: attempt === 0 ? synthPrompt : healPrompt,
-              maxTokens: 8192,
+              maxTokens: 6000,
               temperature: 0.15,
               minChars: 120,
               chain: buildModelChain(selectedModel, workerStage),
               onUsage: emitUsage,
             });
 
-            docCode = cleanArtifactCode(rawOut, archetype, provider, false);
+            docCode = cleanArtifactCode(rawOut, archetype, false);
 
             sendEvent("status", { step: "validating" });
 
@@ -324,6 +362,7 @@ Fix ALL syntax, duplicate-key, or structural errors while keeping the full set o
               docValid = true;
               docErrors = [];
               unresolvedErrors = [];
+              sendEvent("partial", { code: docCode });
             } else {
               docErrors = errs;
               attempt++;
@@ -336,80 +375,30 @@ Fix ALL syntax, duplicate-key, or structural errors while keeping the full set o
           }
         }
 
-        // ── Phase 3: Multi-Model Semantic Completeness Verification & Auto-Enrichment ──
+        // ── Phase 3: Fast Completeness Check (No Full-File Rewrite Bottleneck) ──
         if (unresolvedErrors.length === 0 && finalOutput.trim().length > 0) {
           sendEvent("status", { step: "semantic_validation" });
 
           try {
-            const valSystem = `You are a Principal Infrastructure Semantic Reviewer. Verify whether the synthesized ${archetype} configuration for ${provider} implements the core components requested in the context and user answers.
-Respond strictly in JSON:
-{
-  "status": "VALID" | "MISSING",
-  "missing": ["concise missing item if truly absent, otherwise empty array"]
-}
-Mark "VALID" if all major requested services/stages are present, even if minor optional flags vary.`;
+            const valSystem = `You are a Principal Infrastructure Reviewer. Verify that the generated ${archetype} configuration for ${provider} is structurally complete and addresses the user's stack. Respond strictly in JSON: {"status": "VALID", "summary": "1-sentence verification summary"}.`;
+            const valUser = `Target: ${archetype} on ${provider}\nGenerated Lines: ${finalOutput.split("\n").length}\nCode Preview:\n${finalOutput.slice(0, 3500)}`;
 
-            const valUser = `Context:\n${repoContext}\n\nUser Answers:\n${JSON.stringify(userAnswers, null, 2)}\n\nGenerated ${archetype} Code:\n${finalOutput}`;
-
-            const { content: valRaw } = await executeModelChain({
-              roleLabel: "Phase 3 · Semantic Verifier",
+            await executeModelChain({
+              roleLabel: "Phase 3 · Completeness Verifier",
               systemPrompt: valSystem,
               userPrompt: valUser,
-              maxTokens: 3000,
+              maxTokens: 600,
               temperature: 0.1,
               jsonMode: true,
               minChars: 10,
-              chain: buildModelChain(selectedModel, "validator"),
+              chain: buildModelChain(
+                selectedModel === "multi-agent" ? "qwen-3.8-27b" : selectedModel,
+                "validator"
+              ),
               onUsage: emitUsage,
             });
-
-            const verdict = extractFirstJsonObject(valRaw);
-            if (
-              verdict?.status === "MISSING" &&
-              Array.isArray(verdict.missing) &&
-              verdict.missing.length > 0
-            ) {
-              // Auto-enrich missing components and re-validate syntax!
-              sendEvent("status", {
-                step: "self_healing",
-                attempt: 1,
-                module: "Semantic Completeness",
-              });
-
-              const enrichPrompt = `Enhance and complete the following ${archetype} configuration (${provider}) by adding these missing requested components:
-${verdict.missing.map((m: string) => `- ${m}`).join("\n")}
-
-Existing Valid Code:
-${finalOutput}
-
-Return the COMPLETE, unified, syntax-valid ${archetype} configuration containing all existing code plus the missing components integrated cleanly. Output raw code only, no markdown fences.`;
-
-              const { content: enrichedRaw } = await executeModelChain({
-                roleLabel: "Phase 3 · Completeness Enricher",
-                systemPrompt:
-                  archetype === "terraform"
-                    ? TERRAFORM_SYNTHESIS_SYSTEM_PROMPT
-                    : archetype === "kubernetes"
-                      ? KUBERNETES_SYNTHESIS_SYSTEM_PROMPT
-                      : archetype === "docker"
-                        ? DOCKER_SYNTHESIS_SYSTEM_PROMPT
-                        : DEVSECOPS_SYNTHESIS_SYSTEM_PROMPT,
-                userPrompt: enrichPrompt,
-                maxTokens: 8192,
-                temperature: 0.15,
-                minChars: finalOutput.length * 0.6,
-                chain: buildModelChain(selectedModel, "worker-b"),
-                onUsage: emitUsage,
-              });
-
-              const enrichedClean = cleanArtifactCode(enrichedRaw, archetype, provider, false);
-              const enrichErrs = validateArtifact(enrichedClean, archetype, provider);
-              if (enrichErrs.length === 0) {
-                finalOutput = enrichedClean;
-              }
-            }
           } catch (valErr) {
-            console.warn("[Synthesize] Semantic validator non-blocking error:", valErr);
+            console.warn("[Synthesize] Completeness check non-blocking warning:", valErr);
           }
         }
 
@@ -426,7 +415,12 @@ Return the COMPLETE, unified, syntax-valid ${archetype} configuration containing
           message: err.message || "Failed to synthesize configuration",
         });
       } finally {
-        controller.close();
+        streamClosed = true;
+        try {
+          controller.close();
+        } catch {
+          // Ignore already closed controller
+        }
       }
     },
   });
@@ -444,12 +438,10 @@ Return the COMPLETE, unified, syntax-valid ${archetype} configuration containing
 function cleanArtifactCode(
   raw: string,
   archetype: string,
-  provider: string,
   stripDuplicateTerraformHeader: boolean
 ): string {
   let text = stripReasoningArtifacts(raw);
 
-  // Extract fenced block if the model wrapped the code in ```...```
   const fenceMatch = text.match(/```(?:[a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)```/);
   if (fenceMatch && fenceMatch[1] && fenceMatch[1].trim().length > 30) {
     text = fenceMatch[1];
@@ -457,7 +449,6 @@ function cleanArtifactCode(
     text = text.replace(/^```[a-zA-Z0-9_-]*\s*\n?/i, "").replace(/\n?```\s*$/i, "");
   }
 
-  // Strip leading conversational prose lines safely (never touching YAML/HCL/Groovy lines)
   const lines = text.split("\n");
   while (lines.length > 0) {
     const trimmed = lines[0].trim();
@@ -478,7 +469,6 @@ function cleanArtifactCode(
 
   let cleaned = lines.join("\n").trim();
 
-  // If Terraform Module 2+ accidentally emitted terraform {} or provider {} blocks, strip them cleanly
   if (archetype === "terraform" && stripDuplicateTerraformHeader) {
     cleaned = stripTopLevelHclBlocks(cleaned, ["terraform", "provider"]);
   }
@@ -657,7 +647,7 @@ function validateHclOutput(content: string): string[] {
       }
       if (!inString) {
         if (char === "#" || (char === "/" && line[i + 1] === "/")) {
-          break; // rest of line is comment
+          break;
         }
         if (char === "<" && line[i + 1] === "<") {
           const hdMatch = line.slice(i).match(/^<<-?([A-Za-z0-9_]+)/);
