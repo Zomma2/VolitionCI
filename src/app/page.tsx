@@ -1,31 +1,8 @@
 import Link from "next/link";
 import Wizard from "@/components/wizard/Wizard";
+import HowItWorksSection from "@/components/home/HowItWorksSection";
 import { EXAMPLE_BLUEPRINTS } from "@/lib/examplesData";
 import { ArrowRight } from "lucide-react";
-
-const WORKFLOW_STEPS = [
-  {
-    step: "01",
-    title: "Repository or Stack Input",
-    description:
-      "Index a public GitHub repository tree (`package.json`, `go.mod`, `Dockerfile`, `.tf`, `helm`), describe your stack in chat, or select components manually.",
-    detail: "GitHub REST tree scan · Stack Composer · Interactive Architect",
-  },
-  {
-    step: "02",
-    title: "Infrastructure Parameters",
-    description:
-      "Configure cloud identity federation (OIDC), remote state backends, ingress controllers, autoscaling bounds, and SAST/container scanners.",
-    detail: "Stack-specific options with 1-click recommended defaults",
-  },
-  {
-    step: "03",
-    title: "Multi-Model Generation & Check",
-    description:
-      "Generate configurations using the multi-model ensemble or a single selected model, validated against YAML parsing and HCL2 block checks before export.",
-    detail: "Codestral · Gemini 3.6 · GPT-OSS 120B · Command A · Qwen 3.8",
-  },
-];
 
 const ROUTING_MATRIX = [
   {
@@ -106,46 +83,8 @@ export default function Home() {
         <Wizard />
       </main>
 
-      {/* Architecture Overview */}
-      <section className="border-t border-white/[0.07] bg-[#09090b]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 space-y-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
-                Pipeline
-              </div>
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-100">
-                How the studio works
-              </h2>
-            </div>
-            <Link
-              href="/docs#architecture"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-300 hover:text-white shrink-0"
-            >
-              <span>Technical documentation</span>
-              <ArrowRight size={13} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {WORKFLOW_STEPS.map((stage) => (
-              <div
-                key={stage.step}
-                className="p-5 rounded-xl bg-[#0c0d10] border border-white/[0.07] flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-2.5">
-                  <span className="font-mono text-xs text-zinc-500">{stage.step}</span>
-                  <h3 className="text-sm font-semibold text-zinc-100">{stage.title}</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">{stage.description}</p>
-                </div>
-                <div className="pt-3 border-t border-white/[0.06] font-mono text-[11px] text-zinc-500">
-                  {stage.detail}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Visual How It Works Architecture Section */}
+      <HowItWorksSection />
 
       {/* Reference Templates */}
       <section className="border-t border-white/[0.07] bg-[#09090b]">
