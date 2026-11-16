@@ -3,6 +3,7 @@
 import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { useWizardStore, Archetype } from "@/store/useWizardStore";
 import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import { getAIModelOption } from "@/lib/aiModels";
 import TechIcon from "@/components/ui/TechIcon";
 
 const DIAGNOSTICS_BY_ARCHETYPE: Record<Archetype, string[]> = {
@@ -29,9 +30,18 @@ const DIAGNOSTICS_BY_ARCHETYPE: Record<Archetype, string[]> = {
 };
 
 export default function Step2Analyze() {
-  const { status, repoUrl, archetype, targetPlatform, errorMessage, setStep } = useWizardStore();
+  const {
+    status,
+    repoUrl,
+    archetype,
+    targetPlatform,
+    selectedModel,
+    errorMessage,
+    setStep,
+  } = useWizardStore();
   const theme = ARCHETYPE_THEMES[archetype];
   const diagnostics = DIAGNOSTICS_BY_ARCHETYPE[archetype];
+  const activeModel = getAIModelOption(selectedModel);
 
   if (status === "error") {
     return (
@@ -99,10 +109,12 @@ export default function Step2Analyze() {
           ))}
         </div>
 
-        <p className="text-[11px] font-mono text-zinc-500 text-center">
-          Querying stack analyzer (`qwen/qwen3.8-27b`) for deterministic {theme.shortLabel}{" "}
-          constraints...
-        </p>
+        <div className="flex items-center justify-center gap-2 text-[11px] font-mono text-zinc-400">
+          <TechIcon iconKey={activeModel.iconKey} name={activeModel.name} size={13} />
+          <span>
+            Engine: <span className="text-zinc-200">{activeModel.name}</span> ({activeModel.provider})
+          </span>
+        </div>
       </div>
     </div>
   );

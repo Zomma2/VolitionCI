@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { ModelSelectionId } from "@/lib/aiModels";
 
 export interface AgentQuestion {
   id: string;
@@ -28,6 +29,7 @@ export interface SavedSynthesisRun {
   title: string;
   archetype: Archetype;
   targetPlatform: string;
+  modelId?: ModelSelectionId;
   code: string;
   createdAt: string;
 }
@@ -61,6 +63,7 @@ export interface WizardStore {
   presetPrompt: string;
   archetype: Archetype;
   targetPlatform: string;
+  selectedModel: ModelSelectionId;
   repoUrl: string;
   repoContext: string;
   ciProvider: string;
@@ -77,6 +80,7 @@ export interface WizardStore {
   setPresetPrompt: (prompt: string) => void;
   setArchetype: (archetype: Archetype) => void;
   setTargetPlatform: (platform: string) => void;
+  setSelectedModel: (model: ModelSelectionId) => void;
   setRepoData: (url: string, context: string) => void;
   setInterrogationData: (stack: any, questions: AgentQuestion[]) => void;
   setAnswer: (id: string, answer: string) => void;
@@ -107,6 +111,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
   presetPrompt: "",
   archetype: "pipeline",
   targetPlatform: "GitHub Actions",
+  selectedModel: "multi-agent",
   repoUrl: "",
   repoContext: "",
   ciProvider: "GitHub Actions",
@@ -123,6 +128,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
   setPresetPrompt: (presetPrompt) => set({ presetPrompt }),
   setArchetype: (archetype) => set({ archetype }),
   setTargetPlatform: (targetPlatform) => set({ targetPlatform, ciProvider: targetPlatform }),
+  setSelectedModel: (selectedModel) => set({ selectedModel }),
   setRepoData: (repoUrl, repoContext) => set({ repoUrl, repoContext }),
   setInterrogationData: (detectedStack, agentQuestions) => set({ detectedStack, agentQuestions }),
   setAnswer: (id, answer) =>
@@ -148,6 +154,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       targetPlatform,
       ciProvider: targetPlatform,
       repoUrl: title,
+      repoContext: `Blueprint Specification: ${title} (${archetype} on ${targetPlatform})`,
       generatedCode: code,
       status: "complete",
       errorMessage: "",
@@ -193,6 +200,7 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       presetPrompt: "",
       archetype: "pipeline",
       targetPlatform: "GitHub Actions",
+      selectedModel: state.selectedModel,
       repoUrl: "",
       repoContext: "",
       ciProvider: "GitHub Actions",

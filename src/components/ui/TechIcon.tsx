@@ -490,6 +490,58 @@ function renderInlineVector(key: string, size: number): React.ReactNode | null {
     case "testing / ci":
     case "runtime-ci":
       return <ShieldCheck size={size - 2} className="text-teal-300 shrink-0" />;
+
+    // AI Engine & Model Emblems
+    case "model-ensemble":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <circle cx="7" cy="7" r="2.6" fill="#22D3EE" />
+          <circle cx="17" cy="7" r="2.6" fill="#FBBF24" />
+          <circle cx="7" cy="17" r="2.6" fill="#34D399" />
+          <circle cx="17" cy="17" r="2.6" fill="#60A5FA" />
+          <path d="M9.5 7H14.5M7 9.5V14.5M17 9.5V14.5M9.5 17H14.5M9 9L15 15M15 9L9 15" stroke="#E4E4E7" strokeOpacity="0.65" strokeWidth="1.3" />
+        </svg>
+      );
+    case "model-gemini":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <path d="M12 2.5C12.6 7.8 16.2 11.4 21.5 12C16.2 12.6 12.6 16.2 12 21.5C11.4 16.2 7.8 12.6 2.5 12C7.8 11.4 11.4 7.8 12 2.5Z" fill="#38BDF8" fillOpacity="0.28" stroke="#60A5FA" strokeWidth="1.7" strokeLinejoin="round" />
+        </svg>
+      );
+    case "model-mistral":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="4" width="4" height="4" fill="#FBBF24" />
+          <rect x="17" y="4" width="4" height="4" fill="#FBBF24" />
+          <rect x="3" y="9" width="8" height="4" fill="#FB923C" />
+          <rect x="13" y="9" width="8" height="4" fill="#FB923C" />
+          <rect x="3" y="14" width="4" height="6" fill="#F97316" />
+          <rect x="10" y="14" width="4" height="4" fill="#FDBA74" />
+          <rect x="17" y="14" width="4" height="6" fill="#F97316" />
+        </svg>
+      );
+    case "model-openai":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <polygon points="12,3 19.8,7.5 19.8,16.5 12,21 4.2,16.5 4.2,7.5" fill="#10B981" fillOpacity="0.18" stroke="#34D399" strokeWidth="1.7" />
+          <circle cx="12" cy="12" r="3" stroke="#A7F3D0" strokeWidth="1.6" />
+        </svg>
+      );
+    case "model-cohere":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <circle cx="9.5" cy="12" r="6" fill="#FB7185" fillOpacity="0.22" stroke="#FB7185" strokeWidth="1.7" />
+          <circle cx="16.5" cy="9" r="3.2" fill="#FDA4AF" fillOpacity="0.35" stroke="#FDA4AF" strokeWidth="1.5" />
+          <circle cx="16.5" cy="16" r="2.2" fill="#34D399" />
+        </svg>
+      );
+    case "model-qwen":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="#6366F1" fillOpacity="0.2" stroke="#818CF8" strokeWidth="1.7" />
+          <path d="M13.2 6.5L8.8 12.5H12.3L10.8 17.5L15.4 11.5H11.9L13.2 6.5Z" fill="#C7D2FE" />
+        </svg>
+      );
     default:
       return null;
   }

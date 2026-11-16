@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useWizardStore, Archetype } from "@/store/useWizardStore";
 import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import { AI_MODEL_OPTIONS, getAIModelOption } from "@/lib/aiModels";
 import TechIcon from "@/components/ui/TechIcon";
 import {
   ArrowRight,
   Check,
+  Cpu,
   Globe,
   Grip,
   MessageSquare,
@@ -29,7 +31,7 @@ const PLATFORM_CONFIG: Record<
   { label: string; options: PlatformOption[]; default: string }
 > = {
   pipeline: {
-    label: "Target CI/CD Provider",
+    label: "Target CI/CD",
     default: "GitHub Actions",
     options: [
       { name: "GitHub Actions", iconKey: "githubactions" },
@@ -40,7 +42,7 @@ const PLATFORM_CONFIG: Record<
     ],
   },
   terraform: {
-    label: "Target Cloud Provider",
+    label: "Cloud Provider",
     default: "AWS",
     options: [
       { name: "AWS", iconKey: "aws" },
@@ -50,7 +52,7 @@ const PLATFORM_CONFIG: Record<
     ],
   },
   kubernetes: {
-    label: "Target Cluster Distribution",
+    label: "Cluster Target",
     default: "Generic Kubernetes",
     options: [
       { name: "Generic Kubernetes", iconKey: "kubernetes" },
@@ -61,7 +63,7 @@ const PLATFORM_CONFIG: Record<
     ],
   },
   docker: {
-    label: "Target Runtime Profile",
+    label: "Runtime Profile",
     default: "Local Development",
     options: [
       { name: "Local Development", iconKey: "runtime-local" },
@@ -221,7 +223,7 @@ interface ChatConfigDraft {
 }
 
 interface ArchetypeChatSession {
-  history: { role: "user" | "ai"; content: string }[];
+  history: { role: "user" | "ai"; content: string; modelUsed?: string }[];
   revisions: number;
   config: ChatConfigDraft | null;
   selectedTech: string[];
@@ -238,12 +240,14 @@ export default function Step1Ingest() {
   const {
     archetype,
     targetPlatform,
+    selectedModel,
     ingestMode,
     presetPrompt,
     setIngestMode,
     setPresetPrompt,
     setArchetype,
     setTargetPlatform,
+    setSelectedModel,
     setRepoData,
     setStatus,
     setStep,
@@ -266,6 +270,7 @@ export default function Step1Ingest() {
   const theme = ARCHETYPE_THEMES[archetype];
   const currentPlatformConfig = PLATFORM_CONFIG[archetype];
   const activeSession = sessions[archetype];
+  const activeModelMeta = getAIModelOption(selectedModel);
 
   useEffect(() => {
     if (presetPrompt) {
@@ -323,7 +328,7 @@ export default function Step1Ingest() {
 
     if (!trimmed || currentSess.revisions >= MAX_CHAT_TURNS || isChatLoading) return;
 
-    const newHistory: { role: "user" | "ai"; content: string }[] = [
+    const newHistory: { role: "user" | "ai"; content: string; modelUsed?: string }[] = [
       ...currentSess.history,
       { role: "user", content: trimmed },
     ];
@@ -345,6 +350,7 @@ export default function Step1Ingest() {
           revision: currentSess.revisions,
           selectedArchetype: targetArch,
           selectedPlatform: targetPlat,
+          selectedModel,
         }),
       });
       const data = await res.json();
@@ -367,7 +373,11 @@ export default function Step1Ingest() {
       updateSession(resolvedArch, (prev) => ({
         history: [
           ...newHistory,
-          { role: "ai", content: data.reply || "Configuration updated." },
+          {
+            role: "ai",
+            content: data.reply || "Configuration updated.",
+            modelUsed: data.modelUsed,
+          },
         ],
         revisions: currentSess.revisions + 1,
         config: data.config || prev.config,
@@ -412,6 +422,7 @@ export default function Step1Ingest() {
               : [targetPlatform],
           archetype: chatConfig.archetype || archetype,
           targetPlatform: chatConfig.targetPlatform || targetPlatform,
+          selectedModel,
         }),
       });
       if (!res.ok) throw new Error("Failed to analyze specification");
@@ -453,6 +464,7 @@ export default function Step1Ingest() {
           manualStack: ingestMode === "manual" ? manualTech : undefined,
           archetype,
           targetPlatform,
+          selectedModel,
         }),
       });
 
@@ -471,7 +483,7 @@ export default function Step1Ingest() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden space-y-3.5">
+    <div className="flex flex-col h-full overflow-hidden space-y-3">
       {/* 1. Archetype Generation Target Cards */}
       <div className="space-y-2 shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -484,7 +496,7 @@ export default function Step1Ingest() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {ARCHETYPE_LIST.map((archId) => {
             const cardTheme = ARCHETYPE_THEMES[archId];
             const isSelected = archetype === archId;
@@ -493,21 +505,21 @@ export default function Step1Ingest() {
                 key={archId}
                 type="button"
                 onClick={() => handleArchetypeChange(archId)}
-                className={`p-3 rounded-lg border text-left flex flex-col justify-between transition-all ${
+                className={`p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${
                   isSelected
                     ? cardTheme.classes.cardActive
                     : "bg-[#090b0f]/70 border-white/[0.07] text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 hover:border-white/[0.14]"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div
-                    className={`w-7 h-7 rounded-md flex items-center justify-center border transition-colors ${
+                    className={`w-6 h-6 rounded-md flex items-center justify-center border transition-colors ${
                       isSelected
                         ? "bg-zinc-950/70 border-white/[0.15]"
                         : "bg-zinc-900 border-white/[0.06]"
                     }`}
                   >
-                    <TechIcon iconKey={`target-${archId}`} name={cardTheme.name} size={16} />
+                    <TechIcon iconKey={`target-${archId}`} name={cardTheme.name} size={15} />
                   </div>
                   <span className="font-mono text-[10px] text-zinc-400 truncate max-w-[125px]">
                     {cardTheme.artifact}
@@ -530,12 +542,13 @@ export default function Step1Ingest() {
         </div>
       </div>
 
-      {/* 2. Target Platform Selector Strip with Verified Icons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 px-3 rounded-lg bg-[#090b0f]/80 border border-white/[0.07] shrink-0">
-        <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider shrink-0">
-          {currentPlatformConfig.label}
-        </span>
-        <div className="flex flex-wrap items-center gap-1.5">
+      {/* 2. Target Platform & AI Model Selector Bar (Right at Step 1 Beginning) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-2 shrink-0">
+        {/* Platform Selector */}
+        <div className="xl:col-span-5 flex flex-wrap items-center gap-1.5 py-2 px-3 rounded-lg bg-[#090b0f]/80 border border-white/[0.07]">
+          <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider mr-1 shrink-0">
+            {currentPlatformConfig.label}:
+          </span>
           {currentPlatformConfig.options.map((opt) => {
             const isSelected = targetPlatform === opt.name;
             return (
@@ -546,14 +559,46 @@ export default function Step1Ingest() {
                   setTargetPlatform(opt.name);
                   setManualTech([]);
                 }}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
                   isSelected
                     ? theme.classes.platformActive
                     : "bg-zinc-900/70 border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:border-white/[0.15]"
                 }`}
               >
-                <TechIcon iconKey={opt.iconKey} name={opt.name} size={13} />
+                <TechIcon iconKey={opt.iconKey} name={opt.name} size={12} />
                 <span>{opt.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* AI Engine / Multi-Model Selector */}
+        <div className="xl:col-span-7 flex flex-wrap items-center gap-1.5 py-2 px-3 rounded-lg bg-[#090b0f]/80 border border-white/[0.07]">
+          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider mr-1 shrink-0">
+            <Cpu size={11} className={theme.classes.iconActive} />
+            <span>AI Engine:</span>
+          </span>
+          {AI_MODEL_OPTIONS.map((modelOpt) => {
+            const isSelected = selectedModel === modelOpt.id;
+            return (
+              <button
+                key={modelOpt.id}
+                type="button"
+                onClick={() => setSelectedModel(modelOpt.id)}
+                title={`${modelOpt.name} (${modelOpt.provider}) — ${modelOpt.description}`}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+                  isSelected
+                    ? theme.classes.platformActive
+                    : "bg-zinc-900/70 border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:border-white/[0.15]"
+                }`}
+              >
+                <TechIcon iconKey={modelOpt.iconKey} name={modelOpt.name} size={12} />
+                <span>{modelOpt.shortName}</span>
+                {modelOpt.id === "multi-agent" ? (
+                  <span className="hidden sm:inline font-mono text-[9px] px-1 rounded bg-white/[0.08] text-zinc-200">
+                    4x
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -625,6 +670,10 @@ export default function Step1Ingest() {
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <span className="hidden sm:inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-900 border border-white/[0.07] text-zinc-300">
+                <TechIcon iconKey={activeModelMeta.iconKey} name={activeModelMeta.name} size={11} />
+                <span>{activeModelMeta.shortName}</span>
+              </span>
               <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-900 border border-white/[0.07] text-zinc-400">
                 Turn {activeSession.revisions}/{MAX_CHAT_TURNS}
               </span>
@@ -643,11 +692,15 @@ export default function Step1Ingest() {
 
           <div className="flex-1 overflow-y-auto space-y-3 pb-2 text-xs min-h-0 pr-1">
             {activeSession.history.length === 0 ? (
-              <div className="h-full flex flex-col justify-center py-2 space-y-4">
+              <div className="h-full flex flex-col justify-center py-2 space-y-3.5">
                 <div className="space-y-1 text-center">
                   <p className="text-sm font-semibold text-zinc-100">{theme.architectHeadline}</p>
                   <p className="text-xs text-zinc-400 max-w-xl mx-auto leading-relaxed">
                     {theme.architectBrief}
+                  </p>
+                  <p className="font-mono text-[10px] text-zinc-500 pt-0.5">
+                    Active Engine: <span className="text-zinc-300">{activeModelMeta.name}</span> —{" "}
+                    {activeModelMeta.description}
                   </p>
                 </div>
 
@@ -694,6 +747,12 @@ export default function Step1Ingest() {
                       : "bg-zinc-900/90 text-zinc-200 border border-white/[0.08]"
                   }`}
                 >
+                  {msg.role === "ai" && msg.modelUsed ? (
+                    <div className="font-mono text-[10px] text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${theme.classes.dot}`} />
+                      <span>Answered by {msg.modelUsed}</span>
+                    </div>
+                  ) : null}
                   {msg.content}
                 </div>
               </div>
@@ -808,7 +867,7 @@ export default function Step1Ingest() {
 
             {isChatLoading ? (
               <div className={`font-mono animate-pulse text-[11px] pl-1 ${theme.classes.iconActive}`}>
-                {theme.loadingStatusText}
+                [{activeModelMeta.shortName}] {theme.loadingStatusText}
               </div>
             ) : null}
           </div>
@@ -859,7 +918,9 @@ export default function Step1Ingest() {
                 onClick={proceedFromChat}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs transition-colors ${theme.classes.primaryBtn}`}
               >
-                <span>Proceed to {theme.shortLabel} Interrogation</span>
+                <span>
+                  Proceed to {theme.shortLabel} Interrogation ({activeModelMeta.shortName})
+                </span>
                 <ArrowRight size={14} />
               </button>
             </div>
@@ -994,7 +1055,7 @@ export default function Step1Ingest() {
             className={`shrink-0 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs transition-colors ${theme.classes.primaryBtn}`}
           >
             <span>
-              Analyze &amp; Configure {theme.name} ({targetPlatform})
+              Analyze &amp; Configure {theme.name} via {activeModelMeta.shortName}
             </span>
             <ArrowRight size={14} />
           </button>

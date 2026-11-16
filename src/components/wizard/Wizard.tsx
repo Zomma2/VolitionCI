@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useWizardStore, Archetype } from "@/store/useWizardStore";
 import { EXAMPLE_BLUEPRINTS } from "@/lib/examplesData";
 import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
+import { getAIModelOption } from "@/lib/aiModels";
 import TechIcon from "@/components/ui/TechIcon";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Clock, RotateCcw, Trash2, X } from "lucide-react";
@@ -77,6 +78,7 @@ export default function Wizard() {
     step,
     archetype,
     targetPlatform,
+    selectedModel,
     savedRuns,
     hydrateHistory,
     loadBlueprintIntoEditor,
@@ -86,13 +88,14 @@ export default function Wizard() {
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const theme = ARCHETYPE_THEMES[archetype];
+  const activeModel = getAIModelOption(selectedModel);
 
   useEffect(() => {
     hydrateHistory();
   }, [hydrateHistory]);
 
   return (
-    <div className="w-full min-h-[750px] h-[810px] studio-panel rounded-xl relative overflow-hidden flex flex-col">
+    <div className="w-full min-h-[790px] h-[860px] studio-panel rounded-xl relative overflow-hidden flex flex-col">
       <Suspense fallback={null}>
         <StudioUrlHydrator />
       </Suspense>
@@ -135,6 +138,11 @@ export default function Wizard() {
         </div>
 
         <div className="flex items-center gap-2">
+          <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900 border border-white/[0.08] font-mono text-[11px] text-zinc-200">
+            <TechIcon iconKey={activeModel.iconKey} name={activeModel.name} size={13} />
+            <span>{activeModel.shortName}</span>
+          </span>
+
           <span
             className={`hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-md border font-mono text-[11px] transition-colors ${theme.classes.badge}`}
           >
@@ -209,13 +217,14 @@ export default function Wizard() {
             <div className="flex-1 overflow-y-auto py-4 space-y-2.5">
               {savedRuns.map((run) => {
                 const runTheme = ARCHETYPE_THEMES[run.archetype] || ARCHETYPE_THEMES.pipeline;
+                const runModel = getAIModelOption(run.modelId);
                 return (
                   <div
                     key={run.id}
                     className="flex items-center justify-between gap-4 p-3.5 rounded-lg bg-zinc-900/70 border border-white/[0.08] hover:border-white/[0.16] transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <TechIcon
                           iconKey={`target-${run.archetype}`}
                           name={runTheme.name}
@@ -231,6 +240,9 @@ export default function Wizard() {
                         </span>
                         <span className="font-mono text-[10px] text-zinc-400">
                           {run.targetPlatform}
+                        </span>
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-white/[0.06]">
+                          {runModel.shortName}
                         </span>
                       </div>
                       <div className="text-[11px] font-mono text-zinc-500 mt-1">

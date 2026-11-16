@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import Groq from "groq-sdk";
+import {
+  buildModelChain,
+  executeModelChain,
+  extractFirstJsonObject,
+} from "@/lib/serverModelRouter";
 
 export const maxDuration = 60;
-
-const GEMINI_MODEL = "models/gemini-3.6-flash";
-const GROQ_MODEL = "openai/gpt-oss-20b";
 
 type ArchetypeKey = "pipeline" | "terraform" | "kubernetes" | "docker";
 
@@ -39,53 +39,6 @@ Domain Focus:
 - Preferred verified tool recommendations (pick 2-4 relevant ones): Nginx (slug: "nginx", color: "22C55E"), Traefik (slug: "traefikproxy", color: "24A1C1"), Redis (slug: "redis", color: "F87171"), Prometheus (slug: "prometheus", color: "F97316"), Grafana (slug: "grafana", color: "FB923C"), Trivy (slug: "trivy", color: "38BDF8").`,
 };
 
-function extractFirstJsonObject(raw: string): any {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    // Continue to balanced brace extraction
-  }
-
-  const start = raw.indexOf("{");
-  if (start === -1) return null;
-
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-
-  for (let i = start; i < raw.length; i++) {
-    const c = raw[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (c === "\\") {
-      escape = true;
-      continue;
-    }
-    if (c === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (!inString) {
-      if (c === "{") {
-        depth++;
-      } else if (c === "}") {
-        depth--;
-        if (depth === 0) {
-          const candidate = raw.substring(start, i + 1);
-          try {
-            return JSON.parse(candidate);
-          } catch {
-            return null;
-          }
-        }
-      }
-    }
-  }
-  return null;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const {
@@ -94,6 +47,7 @@ export async function POST(req: NextRequest) {
       revision,
       selectedArchetype,
       selectedPlatform,
+      selectedModel,
     } = await req.json();
 
     const isFirstTurn = revision === 0;
@@ -162,53 +116,29 @@ Analyze the conversation history and output valid JSON only. Never use emojis an
     const userMessages = (history || [])
       .map((h: any) => `${h.role}: ${h.content}`)
       .join("\n");
-    let parsed: any;
 
-    try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-      const model = genAI.getGenerativeModel({
-        model: GEMINI_MODEL,
-        systemInstruction: systemPrompt,
-      });
+    const { content, usedSpec } = await executeModelChain({
+      roleLabel: "Consultative Architect",
+      systemPrompt,
+      userPrompt: userMessages,
+      maxTokens: 4096,
+      temperature: 0.3,
+      jsonMode: true,
+      minChars: 20,
+      chain: buildModelChain(selectedModel, "chat"),
+    });
 
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: userMessages }] }],
-        generationConfig: {
-          maxOutputTokens: 1200,
-          temperature: 0.3,
-          responseMimeType: "application/json",
-        },
-      });
-      const rawText = result.response.text();
-      parsed = extractFirstJsonObject(rawText);
-      if (!parsed) {
-        throw new Error("Failed to parse JSON from Gemini response");
-      }
-    } catch (geminiErr: any) {
-      console.warn("Gemini failed in chat-builder, falling back to Groq:", geminiErr?.message);
-
-      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-      const completion = await groq.chat.completions.create({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessages },
-        ],
-        temperature: 0.3,
-        max_tokens: 1200,
-        response_format: { type: "json_object" },
-      });
-
-      const rawContent = completion.choices[0]?.message?.content || "{}";
-      parsed = extractFirstJsonObject(rawContent) || {};
-    }
+    const parsed = extractFirstJsonObject(content) || {};
 
     if (parsed?.config) {
       if (!parsed.config.archetype) parsed.config.archetype = activeArchetype;
       if (!parsed.config.targetPlatform) parsed.config.targetPlatform = activePlatform;
     }
 
-    return NextResponse.json(parsed);
+    return NextResponse.json({
+      ...parsed,
+      modelUsed: usedSpec.label,
+    });
   } catch (error: any) {
     console.error("Chat builder error:", error);
     return NextResponse.json(
