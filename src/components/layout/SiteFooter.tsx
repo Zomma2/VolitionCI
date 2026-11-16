@@ -24,19 +24,18 @@ export default function SiteFooter() {
                 Volition<span className="text-cyan-400">CI</span>
               </span>
               <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 border border-white/[0.08] text-zinc-400">
-                v0.4.2
+                v0.4.2 Beta
               </span>
             </div>
 
             <p className="text-xs text-zinc-400 leading-relaxed max-w-sm">
-              Autonomous DevSecOps and Infrastructure-as-Code synthesis platform. Combines repository
-              tree analysis, consultative architectural interrogation, and ReAct self-healing
-              validation.
+              Web studio for drafting and validating CI/CD pipelines, Terraform HCL modules,
+              Kubernetes manifests, and Docker Compose files. Currently in public beta.
             </p>
 
             <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-zinc-900/90 border border-white/[0.07] text-[11px] text-zinc-300">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="font-mono">Synthesis &amp; Validation Pipelines Online</span>
+              <span className="font-mono">Public Beta · Multi-Model Routing</span>
             </div>
           </div>
 

@@ -57,7 +57,7 @@ export default function SiteHeader() {
                 className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-white/[0.08] hover:border-cyan-400/30 hover:text-cyan-300 transition-colors"
                 title="View release changelog"
               >
-                v0.4.2
+                v0.4.2 Beta
               </Link>
             </div>
 
@@ -88,7 +88,7 @@ export default function SiteHeader() {
               className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-zinc-900/90 border border-white/[0.07] hover:border-white/[0.14] text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="font-mono">4 LLM Engines Active</span>
+              <span className="font-mono">Multi-Model Studio</span>
             </Link>
 
             <a

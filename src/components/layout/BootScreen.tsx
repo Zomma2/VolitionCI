@@ -170,7 +170,7 @@ export default function BootScreen() {
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400 leading-snug">
-                  Autonomous DevSecOps &amp; Cloud Infrastructure Synthesis Studio
+                  DevSecOps &amp; Cloud Infrastructure Studio (v0.4.2 Beta)
                 </p>
                 <div className="pt-1 flex items-center gap-1.5 font-mono text-[10px] text-zinc-500">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />

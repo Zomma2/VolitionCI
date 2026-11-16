@@ -12,58 +12,84 @@ import {
   GitPullRequest,
   Layers,
   ShieldCheck,
-  Terminal,
 } from "lucide-react";
 
-const PIPELINE_STAGES = [
+const WORKFLOW_STEPS = [
   {
     step: "01",
-    title: "Repository & Stack Ingestion",
+    title: "Repository or Stack Input",
     description:
-      "Inspect public GitHub trees recursively via the GitHub REST API without cloning source code, consult interactively with the AI Architect, or compose stacks manually.",
-    detail: "Detects package.json, go.mod, Cargo.toml, Dockerfile, Helm & Terraform manifests",
+      "Point to a public GitHub repository to index manifests (`package.json`, `go.mod`, `Dockerfile`, `.tf`, `helm`), describe your setup in chat, or select components manually.",
+    detail: "GitHub REST tree inspection · Stack Composer · Interactive Architect",
     icon: GitPullRequest,
   },
   {
     step: "02",
-    title: "Context-Aware Interrogation",
+    title: "Configuration & Policy Choices",
     description:
-      "Generates targeted architectural trade-off questions tailored to your stack — covering OIDC authentication, remote state locking, ingress controllers, and SAST/SBOM gates.",
-    detail: "Dynamic card-based matrix with 1-click recommended defaults",
+      "Answer targeted questions for your environment — covering cloud auth (OIDC), state backends, ingress controllers, autoscaling, and security scanners.",
+    detail: "Context-specific options with 1-click defaults",
     icon: ShieldCheck,
   },
   {
     step: "03",
-    title: "Modular ReAct Planner-Worker",
+    title: "Modular Generation",
     description:
-      "Decomposes complex topologies into 2-5 isolated modules (Networking, IAM, Compute, Data) synthesized sequentially with shared resource ID context to prevent token truncation.",
-    detail: "Eliminates mid-file cutoffs on multi-resource HCL and Kubernetes specs",
+      "Splits large Terraform and Kubernetes specs into logical sections (Networking, Compute, Data, Policy) so outputs stay complete without mid-file cutoffs.",
+    detail: "Selectable models: Codestral, Gemini 3.6, GPT-OSS 120B, Command A, Qwen 3.8",
     icon: Layers,
   },
   {
     step: "04",
-    title: "Deterministic Linting & Self-Healing",
+    title: "Syntax Check & Editor Export",
     description:
-      "Every module passes multi-document YAML parsing or string-aware HCL structural verification plus an LLM Semantic Completeness Validator, triggering up to 3 automated repair loops.",
-    detail: "js-yaml loadAll + HCL block/brace verifier + semantic contract gate",
+      "Runs YAML parsing (`js-yaml`), HCL brace/block checks, and completeness verification before loading the file into Monaco for inline editing and download.",
+    detail: "Multi-document YAML · HCL2 block check · 1-click model comparison",
     icon: Cpu,
+  },
+];
+
+const SUPPORTED_ARTIFACTS = [
+  {
+    archetype: "pipeline" as const,
+    title: "CI/CD Workflows",
+    path: ".github/workflows/pipeline.yml",
+    platforms: "GitHub Actions · GitLab CI · Bitbucket · CircleCI · Jenkins",
+  },
+  {
+    archetype: "terraform" as const,
+    title: "Terraform HCL",
+    path: "infra/main.tf",
+    platforms: "AWS · Google Cloud · Azure · DigitalOcean",
+  },
+  {
+    archetype: "kubernetes" as const,
+    title: "Kubernetes Manifests",
+    path: "k8s/manifests.yaml",
+    platforms: "Generic K8s · Amazon EKS · Google GKE · Azure AKS",
+  },
+  {
+    archetype: "docker" as const,
+    title: "Docker Compose",
+    path: "docker-compose.yml",
+    platforms: "Local Dev · Production Swarm · Ephemeral CI",
   },
 ];
 
 const ROUTING_MATRIX = [
   {
-    stage: "Consultative Builder",
+    stage: "Interactive Architect",
     endpoint: "/api/chat-builder",
     primary: "Gemini 3.6 Flash",
     fallback1: "Groq GPT-OSS 120B",
-    fallback2: "Cohere Command A + Qwen 3.8",
+    fallback2: "Cohere Command A",
   },
   {
-    stage: "Repository Stack Analyzer",
+    stage: "Repository & Stack Analyzer",
     endpoint: "/api/analyze",
     primary: "Groq Qwen 3.8 27B",
     fallback1: "Gemini 3.6 Flash",
-    fallback2: "Cohere Command A + Octokit Tree",
+    fallback2: "Cohere Command A",
   },
   {
     stage: "Phase 1 · Architecture Planner",
@@ -73,18 +99,18 @@ const ROUTING_MATRIX = [
     fallback2: "Groq Qwen 3.8 27B",
   },
   {
-    stage: "Phase 2 · Multi-Model Workers",
+    stage: "Phase 2 · Code Generation",
     endpoint: "/api/synthesize",
     primary: "Mistral Codestral + Gemini 3.6",
     fallback1: "Groq GPT-OSS 120B",
-    fallback2: "Cohere Command A (8K Output)",
+    fallback2: "Cohere Command A",
   },
   {
-    stage: "Phase 3 · Semantic Verifier",
+    stage: "Phase 3 · Completeness Check",
     endpoint: "/api/synthesize",
     primary: "Groq GPT-OSS 120B",
     fallback1: "Gemini 3.6 Flash",
-    fallback2: "Auto-Enrichment Pass",
+    fallback2: "Mistral Codestral",
   },
 ];
 
@@ -93,24 +119,24 @@ export default function Home() {
 
   return (
     <div className="bg-grid-surface">
-      {/* Top Engineering Hero */}
+      {/* Top Product Header Section */}
       <section className="border-b border-white/[0.07] bg-gradient-to-b from-[#09090b] via-[#09090b]/95 to-transparent">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-9 pb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-7 space-y-4">
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-zinc-900 border border-white/[0.08] font-mono text-[11px] text-cyan-300">
-                <Terminal size={12} className="text-cyan-400" />
-                <span>REACT PLANNER-WORKER · SELF-HEALING IAC &amp; CI/CD</span>
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-zinc-900/90 border border-white/[0.08] font-mono text-[11px] text-zinc-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                <span>v0.4.2 Public Beta · DevSecOps &amp; IaC Configuration Studio</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight leading-[1.12] text-zinc-100">
-                Synthesize verified DevSecOps pipelines and cloud infrastructure.
+              <h1 className="text-3xl sm:text-4xl lg:text-[40px] font-bold tracking-tight leading-[1.14] text-zinc-100">
+                Draft and validate CI/CD workflows, Terraform modules, Kubernetes manifests, and Compose files.
               </h1>
 
               <p className="text-sm sm:text-base text-zinc-400 max-w-2xl leading-relaxed">
-                Analyze live GitHub repositories or consult with an infrastructure architect to
-                generate syntax-validated GitHub Actions, GitLab CI, Terraform HCL, Kubernetes
-                manifests, and Docker Compose topologies.
+                Configure deployment pipelines and cloud infrastructure from your GitHub repository
+                structure or stack selection. Compare outputs across multiple code models with
+                built-in YAML and HCL syntax checks before export.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -118,7 +144,7 @@ export default function Home() {
                   href="#studio"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold text-zinc-950 bg-cyan-400 hover:bg-cyan-300 transition-colors"
                 >
-                  <span>Start in Synthesis Studio</span>
+                  <span>Open Studio</span>
                   <ArrowRight size={13} />
                 </a>
                 <Link
@@ -126,46 +152,66 @@ export default function Home() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs font-medium text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.09] transition-colors"
                 >
                   <FileCode2 size={13} className="text-zinc-400" />
-                  <span>Browse Blueprints ({EXAMPLE_BLUEPRINTS.length})</span>
+                  <span>Reference Templates ({EXAMPLE_BLUEPRINTS.length})</span>
                 </Link>
                 <Link
                   href="/docs"
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
                 >
                   <BookOpen size={13} />
-                  <span>Architecture Docs</span>
+                  <span>Documentation</span>
                 </Link>
               </div>
             </div>
 
-            <div className="lg:col-span-5 grid grid-cols-2 gap-2.5">
-              <div className="p-3.5 rounded-lg bg-[#0d0f14] border border-white/[0.07]">
-                <div className="font-mono text-[11px] text-zinc-500">TARGETS</div>
-                <div className="text-sm font-semibold text-zinc-100 mt-1">4 Core Archetypes</div>
-                <div className="text-[11px] text-zinc-400 mt-0.5">
-                  CI/CD, Terraform, K8s, Compose
-                </div>
+            {/* Right: Supported Output Artifacts Matrix */}
+            <div className="lg:col-span-5 rounded-xl bg-[#0b0d12] border border-white/[0.08] overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-white/[0.07] bg-[#090b0f] flex items-center justify-between">
+                <span className="font-mono text-[11px] font-medium text-zinc-300">
+                  Supported Generation Targets
+                </span>
+                <span className="font-mono text-[10px] text-zinc-500">
+                  Click to configure
+                </span>
               </div>
-              <div className="p-3.5 rounded-lg bg-[#0d0f14] border border-white/[0.07]">
-                <div className="font-mono text-[11px] text-zinc-500">SYNTHESIS</div>
-                <div className="text-sm font-semibold text-zinc-100 mt-1">Modular ReAct Loop</div>
-                <div className="text-[11px] text-zinc-400 mt-0.5">
-                  Zero mid-file token truncation
-                </div>
-              </div>
-              <div className="p-3.5 rounded-lg bg-[#0d0f14] border border-white/[0.07]">
-                <div className="font-mono text-[11px] text-zinc-500">VALIDATION</div>
-                <div className="text-sm font-semibold text-zinc-100 mt-1">3x Self-Healing</div>
-                <div className="text-[11px] text-zinc-400 mt-0.5">
-                  YAML AST, HCL brace &amp; semantic
-                </div>
-              </div>
-              <div className="p-3.5 rounded-lg bg-[#0d0f14] border border-white/[0.07]">
-                <div className="font-mono text-[11px] text-zinc-500">RESILIENCE</div>
-                <div className="text-sm font-semibold text-zinc-100 mt-1">4-Provider Failover</div>
-                <div className="text-[11px] text-zinc-400 mt-0.5">
-                  Gemini, Codestral, Cohere, Groq
-                </div>
+              <div className="divide-y divide-white/[0.06]">
+                {SUPPORTED_ARTIFACTS.map((item) => {
+                  const itemTheme = ARCHETYPE_THEMES[item.archetype];
+                  return (
+                    <Link
+                      key={item.archetype}
+                      href={`/?archetype=${item.archetype}#studio`}
+                      className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-7 h-7 rounded-md bg-zinc-900 border border-white/[0.08] flex items-center justify-center shrink-0">
+                          <TechIcon
+                            iconKey={`target-${item.archetype}`}
+                            name={item.title}
+                            size={15}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-zinc-100 group-hover:text-white">
+                              {item.title}
+                            </span>
+                            <span className="font-mono text-[10px] text-zinc-500 truncate">
+                              {item.path}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                            {item.platforms}
+                          </div>
+                        </div>
+                      </div>
+                      <ArrowRight
+                        size={13}
+                        className={`shrink-0 text-zinc-600 group-hover:translate-x-0.5 transition-all ${itemTheme.classes.starterTitleHover}`}
+                      />
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -177,33 +223,33 @@ export default function Home() {
         <Wizard />
       </main>
 
-      {/* ReAct Pipeline Architecture Section */}
+      {/* Workflow Architecture Section */}
       <section className="border-t border-white/[0.07] bg-[#07080b]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2">
-              <div className="font-mono text-[11px] uppercase tracking-wider text-cyan-400">
-                Verification Architecture
+              <div className="font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+                Studio Workflow
               </div>
               <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-                Engineered to eliminate hallucinated YAML and broken HCL
+                From repository structure to validated configuration files
               </h2>
               <p className="text-sm text-zinc-400 max-w-2xl">
-                Single-shot LLM prompts frequently truncate large infrastructure manifests or invent
-                invalid resource blocks. VolitionCI enforces a 4-stage verification pipeline.
+                Each run indexes your stack, collects explicit infrastructure choices, generates
+                modular code, and checks YAML or HCL syntax before opening the editor.
               </p>
             </div>
             <Link
               href="/docs#architecture"
               className="inline-flex items-center gap-1.5 text-xs font-medium text-cyan-300 hover:text-cyan-200 shrink-0"
             >
-              <span>Read technical specification</span>
+              <span>View architecture docs</span>
               <ArrowRight size={13} />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {PIPELINE_STAGES.map((stage) => {
+            {WORKFLOW_STEPS.map((stage) => {
               const Icon = stage.icon;
               return (
                 <div
@@ -230,27 +276,27 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Blueprints Preview */}
+      {/* Reference Blueprints Preview */}
       <section className="border-t border-white/[0.07] bg-[#09090b]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2">
-              <div className="font-mono text-[11px] uppercase tracking-wider text-cyan-400">
-                Production Blueprints
+              <div className="font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+                Reference Templates
               </div>
               <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-                Start from verified reference architectures
+                Inspect or customize starter configurations
               </h2>
               <p className="text-sm text-zinc-400 max-w-2xl">
-                Inspect complete zero-trust configurations in Monaco or load any blueprint directly
-                into the Consultative AI Builder to tailor it to your environment.
+                Open pre-built GitHub Actions, Terraform, Kubernetes, and Docker Compose templates
+                directly in the code editor or load them into the studio to adapt for your stack.
               </p>
             </div>
             <Link
               href="/examples"
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-medium text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.09] shrink-0"
             >
-              <span>View all {EXAMPLE_BLUEPRINTS.length} blueprints</span>
+              <span>Browse all {EXAMPLE_BLUEPRINTS.length} templates</span>
               <ArrowRight size={13} />
             </Link>
           </div>
@@ -304,7 +350,7 @@ export default function Home() {
                       href={`/?blueprint=${bp.id}&mode=customize#studio`}
                       className="flex-1 text-center py-2 px-3 rounded-md text-xs font-medium text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.09] transition-colors"
                     >
-                      Customize with AI
+                      Customize
                     </Link>
                   </div>
                 </div>
@@ -314,19 +360,19 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Multi-Provider LLM Failover Matrix */}
+      {/* Multi-Provider Routing Table */}
       <section className="border-t border-white/[0.07] bg-[#07080b]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 space-y-6">
           <div className="space-y-2">
-            <div className="font-mono text-[11px] uppercase tracking-wider text-cyan-400">
-              High-Availability Inference
+            <div className="font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+              Model Routing &amp; Fallbacks
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-              Multi-provider LLM routing &amp; automatic failover
+              Multi-provider model chains across studio stages
             </h2>
             <p className="text-sm text-zinc-400 max-w-2xl">
-              Every synthesis phase executes against an ordered provider chain. Rate limits or
-              upstream outages trigger transparent sub-second failover with full token telemetry.
+              Run the default multi-model ensemble or pin a specific model in Step 1. If a provider
+              rate-limits or times out, the router falls back to the next configured provider.
             </p>
           </div>
 
@@ -334,11 +380,11 @@ export default function Home() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/[0.08] bg-[#090b0f] font-mono text-[11px] uppercase text-zinc-400">
-                  <th className="py-3 px-4">Execution Stage</th>
-                  <th className="py-3 px-4">Endpoint</th>
-                  <th className="py-3 px-4">Primary Engine</th>
+                  <th className="py-3 px-4">Studio Stage</th>
+                  <th className="py-3 px-4">API Route</th>
+                  <th className="py-3 px-4">Default Model</th>
                   <th className="py-3 px-4">Fallback 1</th>
-                  <th className="py-3 px-4">Fallback 2 / Safeguard</th>
+                  <th className="py-3 px-4">Fallback 2</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.06] text-xs">
@@ -347,7 +393,7 @@ export default function Home() {
                     <td className="py-3 px-4 font-medium text-zinc-100">{row.stage}</td>
                     <td className="py-3 px-4 font-mono text-zinc-400">{row.endpoint}</td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[11px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[11px] bg-zinc-900 text-zinc-200 border border-white/[0.08]">
                         {row.primary}
                       </span>
                     </td>

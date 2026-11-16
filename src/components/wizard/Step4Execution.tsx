@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useWizardStore } from "@/store/useWizardStore";
 import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
@@ -26,7 +26,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-full bg-[#0d0f14] font-mono text-zinc-500 text-xs">
-      Initializing Monaco code editor...
+      Loading code editor...
     </div>
   ),
 });
@@ -37,7 +37,7 @@ function resolveArtifactMeta(archetype: string, provider: string) {
       fileName: "main.tf",
       filePath: "infra/main.tf",
       language: "hcl",
-      badge: "HCL2 Verified",
+      badge: "HCL2 Validated",
     };
   }
   if (archetype === "kubernetes") {
@@ -45,7 +45,7 @@ function resolveArtifactMeta(archetype: string, provider: string) {
       fileName: "k8s-manifests.yaml",
       filePath: "k8s/manifests.yaml",
       language: "yaml",
-      badge: "Manifests Verified",
+      badge: "YAML Validated",
     };
   }
   if (archetype === "docker") {
@@ -53,7 +53,7 @@ function resolveArtifactMeta(archetype: string, provider: string) {
       fileName: "docker-compose.yml",
       filePath: "docker-compose.yml",
       language: "yaml",
-      badge: "Compose Verified",
+      badge: "Compose Validated",
     };
   }
   if (provider === "GitLab CI") {
@@ -61,7 +61,7 @@ function resolveArtifactMeta(archetype: string, provider: string) {
       fileName: ".gitlab-ci.yml",
       filePath: ".gitlab-ci.yml",
       language: "yaml",
-      badge: "GitLab YAML Verified",
+      badge: "YAML Validated",
     };
   }
   if (provider === "Bitbucket Pipelines") {
@@ -69,7 +69,7 @@ function resolveArtifactMeta(archetype: string, provider: string) {
       fileName: "bitbucket-pipelines.yml",
       filePath: "bitbucket-pipelines.yml",
       language: "yaml",
-      badge: "Pipelines Verified",
+      badge: "YAML Validated",
     };
   }
   if (provider === "CircleCI") {
@@ -77,7 +77,7 @@ function resolveArtifactMeta(archetype: string, provider: string) {
       fileName: "config.yml",
       filePath: ".circleci/config.yml",
       language: "yaml",
-      badge: "CircleCI Verified",
+      badge: "YAML Validated",
     };
   }
   if (provider === "Jenkins") {
@@ -85,14 +85,14 @@ function resolveArtifactMeta(archetype: string, provider: string) {
       fileName: "Jenkinsfile",
       filePath: "Jenkinsfile",
       language: "groovy",
-      badge: "Jenkinsfile Verified",
+      badge: "Jenkinsfile Validated",
     };
   }
   return {
     fileName: "pipeline.yml",
     filePath: ".github/workflows/pipeline.yml",
     language: "yaml",
-    badge: "YAML Verified",
+    badge: "YAML Validated",
   };
 }
 
@@ -125,7 +125,6 @@ export default function Step4Execution() {
   const [currentModule, setCurrentModule] = useState("");
   const [moduleProgress, setModuleProgress] = useState({ current: 0, total: 0 });
   const [synthTrigger, setSynthTrigger] = useState(0);
-  const isRunningRef = useRef(false);
 
   const theme = ARCHETYPE_THEMES[archetype];
   const activePlatform = targetPlatform || ciProvider;
@@ -133,116 +132,140 @@ export default function Step4Execution() {
   const activeModelMeta = getAIModelOption(selectedModel);
 
   useEffect(() => {
-    if (status !== "synthesizing" || isRunningRef.current) return;
+    // If we loaded a pre-built blueprint directly into the editor (status is already "complete" on mount
+    // and synthTrigger has not been clicked), do not overwrite it with an API call.
+    const currentState = useWizardStore.getState();
+    if (currentState.status === "complete" && synthTrigger === 0 && currentState.generatedCode) {
+      return;
+    }
 
-    isRunningRef.current = true;
-    let isSubscribed = true;
+    const abortController = new AbortController();
+    let isActive = true;
+
+    const processSseFrame = (rawFrame: string) => {
+      const lines = rawFrame.split("\n");
+      let eventType = "";
+      const dataLines: string[] = [];
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) {
+          eventType = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+          dataLines.push(line.slice(5).trim());
+        }
+      }
+
+      if (!eventType || dataLines.length === 0) return;
+      const dataPayload = dataLines.join("\n");
+
+      try {
+        const parsed = JSON.parse(dataPayload);
+
+        if (eventType === "status") {
+          setStatus(parsed.step);
+          if (parsed.attempt) setAttempt(parsed.attempt);
+          if (parsed.module) setCurrentModule(parsed.module);
+          if (parsed.current) {
+            setModuleProgress({ current: parsed.current, total: parsed.total });
+          }
+        } else if (eventType === "usage") {
+          setUsageLog((prev) => [...prev, parsed]);
+        } else if (eventType === "complete") {
+          const latestState = useWizardStore.getState();
+          const plat = latestState.targetPlatform || latestState.ciProvider;
+          setGeneratedCode(parsed.code || "");
+          setStatus("complete", parsed.warning || "");
+          saveRunToHistory({
+            title: latestState.repoUrl || `${plat} ${latestState.archetype}`,
+            archetype: latestState.archetype,
+            targetPlatform: plat,
+            modelId: latestState.selectedModel,
+            code: parsed.code || "",
+          });
+        } else if (eventType === "error") {
+          setStatus("error", parsed.message || "Synthesis failed.");
+        }
+      } catch (parseErr) {
+        console.error("SSE Frame Parse Error:", parseErr);
+      }
+    };
 
     const startSynthesis = async () => {
+      const latest = useWizardStore.getState();
+      const plat = latest.targetPlatform || latest.ciProvider;
+
       setUsageLog([]);
       setAttempt(0);
       setCurrentModule("");
       setModuleProgress({ current: 0, total: 0 });
+      setStatus("planning", "");
 
       try {
         const res = await fetch("/api/synthesize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: abortController.signal,
           body: JSON.stringify({
             repoContext:
-              repoContext ||
-              `Target Archetype: ${archetype}\nTarget Platform: ${activePlatform}`,
-            userAnswers,
-            provider: activePlatform,
-            archetype,
-            selectedModel,
+              latest.repoContext ||
+              `Target Archetype: ${latest.archetype}\nTarget Platform: ${plat}`,
+            userAnswers: latest.userAnswers,
+            provider: plat,
+            archetype: latest.archetype,
+            selectedModel: latest.selectedModel,
           }),
         });
 
         if (!res.ok || !res.body) {
-          setStatus("error", `Synthesis server responded with HTTP ${res.status}`);
-          isRunningRef.current = false;
+          if (isActive) {
+            setStatus("error", `Synthesis server responded with HTTP ${res.status}`);
+          }
           return;
         }
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
-        let done = false;
         let buffer = "";
 
-        while (!done && isSubscribed) {
-          const { value, done: readerDone } = await reader.read();
-          done = readerDone;
+        while (isActive) {
+          const { value, done } = await reader.read();
           if (value) {
-            buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
 
             let boundary = buffer.indexOf("\n\n");
             while (boundary !== -1) {
-              const ev = buffer.slice(0, boundary);
+              const frame = buffer.slice(0, boundary).trim();
               buffer = buffer.slice(boundary + 2);
-              boundary = buffer.indexOf("\n\n");
-
-              if (!ev.trim()) continue;
-
-              try {
-                if (ev.startsWith("event: status")) {
-                  const dataStr = ev.split("\ndata: ")[1];
-                  if (dataStr) {
-                    const parsed = JSON.parse(dataStr);
-                    setStatus(parsed.step);
-                    if (parsed.attempt) setAttempt(parsed.attempt);
-                    if (parsed.module) setCurrentModule(parsed.module);
-                    if (parsed.current) {
-                      setModuleProgress({ current: parsed.current, total: parsed.total });
-                    }
-                  }
-                } else if (ev.startsWith("event: usage")) {
-                  const dataStr = ev.split("\ndata: ")[1];
-                  if (dataStr) {
-                    const parsed = JSON.parse(dataStr);
-                    setUsageLog((prev) => [...prev, parsed]);
-                  }
-                } else if (ev.startsWith("event: complete")) {
-                  const dataStr = ev.split("\ndata: ")[1];
-                  if (dataStr) {
-                    const parsed = JSON.parse(dataStr);
-                    setGeneratedCode(parsed.code);
-                    setStatus("complete", parsed.warning || "");
-                    saveRunToHistory({
-                      title: repoUrl || `${activePlatform} ${archetype}`,
-                      archetype,
-                      targetPlatform: activePlatform,
-                      modelId: selectedModel,
-                      code: parsed.code,
-                    });
-                  }
-                } else if (ev.startsWith("event: error")) {
-                  const dataStr = ev.split("\ndata: ")[1];
-                  if (dataStr) {
-                    const parsed = JSON.parse(dataStr);
-                    setStatus("error", parsed.message);
-                  }
-                }
-              } catch (parseError) {
-                console.error("SSE Parse Error:", parseError);
+              if (frame) {
+                processSseFrame(frame);
               }
+              boundary = buffer.indexOf("\n\n");
             }
           }
+
+          if (done) {
+            const remaining = buffer.trim();
+            if (remaining) {
+              processSseFrame(remaining);
+            }
+            break;
+          }
         }
-      } catch {
-        if (isSubscribed) setStatus("error", "Network stream interrupted during synthesis.");
-      } finally {
-        isRunningRef.current = false;
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        if (isActive) {
+          setStatus("error", "Network stream interrupted during synthesis.");
+        }
       }
     };
 
     startSynthesis();
 
     return () => {
-      isSubscribed = false;
-      isRunningRef.current = false;
+      isActive = false;
+      abortController.abort();
     };
-  }, [synthTrigger, status === "synthesizing"]);
+  }, [synthTrigger, setGeneratedCode, setStatus, saveRunToHistory]);
 
   const handleRerunWithModel = (nextModel: ModelSelectionId) => {
     setSelectedModel(nextModel);
@@ -273,7 +296,7 @@ export default function Step4Execution() {
           <AlertTriangle size={22} className="text-red-400" />
         </div>
         <div className="space-y-1 max-w-md">
-          <h3 className="text-base font-semibold text-white">Synthesis Pipeline Halted</h3>
+          <h3 className="text-base font-semibold text-white">Generation Halted</h3>
           <p className="text-xs text-zinc-400 leading-relaxed">{errorMessage}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -283,7 +306,7 @@ export default function Step4Execution() {
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-zinc-100 bg-zinc-800 hover:bg-zinc-700 border border-white/[0.1] transition-colors"
           >
             <ArrowLeft size={13} />
-            Back to Interrogation
+            Back to Configuration
           </button>
           <button
             type="button"
@@ -310,15 +333,15 @@ export default function Step4Execution() {
             : 1;
 
     const phases = [
-      { id: 1, label: `Phase 1 · ${theme.shortLabel} Architecture Blueprint Planner` },
+      { id: 1, label: `Phase 1 · ${theme.shortLabel} Architecture Plan` },
       {
         id: 2,
         label:
           moduleProgress.total > 1
-            ? `Phase 2 · Multi-Model Worker & Syntax Gate (${moduleProgress.current}/${moduleProgress.total}: ${currentModule})`
-            : `Phase 2 · Complete ${theme.shortLabel} Synthesis & Syntax Gate`,
+            ? `Phase 2 · Code Generation & Syntax Check (${moduleProgress.current}/${moduleProgress.total}: ${currentModule})`
+            : `Phase 2 · ${theme.shortLabel} Generation & Syntax Check`,
       },
-      { id: 3, label: "Phase 3 · Semantic Completeness Verification & Enrichment" },
+      { id: 3, label: "Phase 3 · Completeness Check" },
     ];
 
     return (
@@ -333,12 +356,12 @@ export default function Step4Execution() {
               </div>
               <div className="space-y-0.5">
                 <h3 className="text-sm font-semibold text-white">
-                  {activeModelMeta.name} · {theme.shortLabel} Synthesis
+                  Generating {meta.filePath}
                 </h3>
                 <p className="font-mono text-[11px] text-zinc-400">
                   {isHealing
-                    ? `Self-healing remediation pass (${currentModule || `Attempt ${attempt}`})`
-                    : `Target: ${meta.filePath} (${activePlatform})`}
+                    ? `Refining syntax (${currentModule || `Pass ${attempt}`})`
+                    : `Engine: ${activeModelMeta.name} · Target: ${activePlatform}`}
                 </p>
               </div>
             </div>
@@ -380,7 +403,7 @@ export default function Step4Execution() {
                     <span className="font-medium">{p.label}</span>
                   </div>
                   <span className="font-mono text-[10px] uppercase">
-                    {done ? "Pass" : active ? "Running" : "Queued"}
+                    {done ? "Done" : active ? "Active" : "Pending"}
                   </span>
                 </div>
               );
@@ -390,7 +413,7 @@ export default function Step4Execution() {
           {usageLog.length > 0 ? (
             <div className="pt-2 border-t border-white/[0.06] space-y-1.5 max-h-36 overflow-y-auto">
               <div className="font-mono text-[10px] text-zinc-500 uppercase">
-                Live Multi-Model Execution Telemetry
+                Model Execution Log
               </div>
               {usageLog.map((log, idx) => (
                 <div
@@ -485,7 +508,7 @@ export default function Step4Execution() {
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="inline-flex items-center gap-1 font-mono text-[10px] text-zinc-400 uppercase tracking-wider mr-1">
             <Cpu size={11} className={theme.classes.iconActive} />
-            <span>Re-synthesize with:</span>
+            <span>Re-run with model:</span>
           </span>
           {AI_MODEL_OPTIONS.map((m) => {
             const isActive = selectedModel === m.id;
@@ -499,7 +522,7 @@ export default function Step4Execution() {
                     ? theme.classes.badge
                     : "bg-zinc-900/70 border-white/[0.06] text-zinc-400 hover:text-zinc-100 hover:border-white/[0.15]"
                 }`}
-                title={`Re-run synthesis using ${m.name}`}
+                title={`Re-run generation using ${m.name}`}
               >
                 <TechIcon iconKey={m.iconKey} name={m.name} size={11} />
                 <span>{m.shortName}</span>
@@ -510,7 +533,7 @@ export default function Step4Execution() {
 
         {uniqueModelsUsed.length > 0 ? (
           <span className="font-mono text-[10px] text-zinc-400">
-            Active run engines: <span className="text-zinc-200">{uniqueModelsUsed.join(" + ")}</span>
+            Models used: <span className="text-zinc-200">{uniqueModelsUsed.join(" + ")}</span>
           </span>
         ) : null}
       </div>
@@ -560,7 +583,7 @@ export default function Step4Execution() {
               <div className="flex items-center gap-1.5">
                 <Activity size={12} className={theme.classes.iconActive} />
                 <span className="font-mono text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Multi-Model Execution Telemetry ({usageLog.length} stages)
+                  Execution Telemetry ({usageLog.length} stages)
                 </span>
               </div>
               <span className="font-mono text-[10px] text-zinc-400">
