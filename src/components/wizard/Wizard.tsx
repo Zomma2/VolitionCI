@@ -6,7 +6,6 @@ import { useWizardStore, Archetype } from "@/store/useWizardStore";
 import { EXAMPLE_BLUEPRINTS } from "@/lib/examplesData";
 import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
 import { getAIModelOption } from "@/lib/aiModels";
-import TechIcon from "@/components/ui/TechIcon";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Clock, RotateCcw, Trash2, X } from "lucide-react";
 import Step1Ingest from "./Step1Ingest";
@@ -24,14 +23,14 @@ const DEFAULT_PLATFORMS: Record<Archetype, string> = {
 const STEPS = [
   { id: 1, code: "01", label: "Ingest" },
   { id: 2, code: "02", label: "Analyze" },
-  { id: 3, code: "03", label: "Interrogate" },
-  { id: 4, code: "04", label: "Synthesize" },
+  { id: 3, code: "03", label: "Configure" },
+  { id: 4, code: "04", label: "Output" },
 ] as const;
 
 const variants = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
+  exit: { opacity: 0, y: -6 },
 };
 
 function StudioUrlHydrator() {
@@ -95,18 +94,13 @@ export default function Wizard() {
   }, [hydrateHistory]);
 
   return (
-    <div className="w-full min-h-[790px] h-[860px] studio-panel rounded-xl relative overflow-hidden flex flex-col">
+    <div className="w-full min-h-[700px] h-[760px] studio-panel rounded-xl relative overflow-hidden flex flex-col">
       <Suspense fallback={null}>
         <StudioUrlHydrator />
       </Suspense>
 
-      {/* Dynamic Per-Target Signature Top Accent Bar */}
-      <div
-        className={`h-[2px] w-full shrink-0 bg-gradient-to-r transition-all duration-300 ${theme.classes.topAccentBar}`}
-      />
-
-      {/* Studio Command & Stage Header */}
-      <div className="shrink-0 px-4 sm:px-6 py-3 border-b border-white/[0.08] bg-[#090b0f] flex flex-wrap items-center justify-between gap-3">
+      {/* Clean Studio Top Bar */}
+      <div className="shrink-0 px-4 sm:px-5 py-2.5 border-b border-white/[0.07] bg-[#09090b] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
           {STEPS.map((s, idx) => {
             const isActive = step === s.id;
@@ -114,23 +108,23 @@ export default function Wizard() {
             return (
               <div key={s.id} className="flex items-center gap-1 sm:gap-2 shrink-0">
                 <div
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
                     isActive
-                      ? theme.classes.stepActive
+                      ? "bg-white/[0.08] text-white"
                       : isDone
-                        ? "text-emerald-400 bg-emerald-500/5 border border-emerald-500/20"
-                        : "text-zinc-500 border border-transparent"
+                        ? "text-zinc-300"
+                        : "text-zinc-500"
                   }`}
                 >
                   {isDone ? (
-                    <Check size={12} className="text-emerald-400" />
+                    <Check size={12} className="text-zinc-300" />
                   ) : (
-                    <span className="font-mono text-[10px] opacity-80">{s.code}</span>
+                    <span className="font-mono text-[10px] text-zinc-500">{s.code}</span>
                   )}
                   <span>{s.label}</span>
                 </div>
                 {idx < STEPS.length - 1 ? (
-                  <div className="w-3 sm:w-5 h-px bg-white/[0.08]" />
+                  <span className="text-zinc-700 font-mono text-xs">/</span>
                 ) : null}
               </div>
             );
@@ -138,35 +132,27 @@ export default function Wizard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900 border border-white/[0.08] font-mono text-[11px] text-zinc-200">
-            <TechIcon iconKey={activeModel.iconKey} name={activeModel.name} size={13} />
-            <span>{activeModel.shortName}</span>
-          </span>
-
-          <span
-            className={`hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-md border font-mono text-[11px] transition-colors ${theme.classes.badge}`}
-          >
-            <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={13} />
-            <span className="font-semibold">{theme.shortLabel}</span>
-            <span className="opacity-50">/</span>
-            <span className="text-zinc-100">{targetPlatform}</span>
+          <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900/90 border border-white/[0.06] font-mono text-[11px] text-zinc-400">
+            <span>{theme.shortLabel}</span>
+            <span className="text-zinc-600">·</span>
+            <span className="text-zinc-200">{targetPlatform}</span>
+            <span className="text-zinc-600">·</span>
+            <span className="text-zinc-300">{activeModel.shortName}</span>
           </span>
 
           <button
             type="button"
             onClick={() => setHistoryOpen((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
               historyOpen
                 ? "bg-white/[0.1] text-white border-white/[0.2]"
-                : "bg-zinc-900 text-zinc-300 border-white/[0.08] hover:border-white/[0.16] hover:text-white"
+                : "bg-zinc-900/80 text-zinc-300 border-white/[0.07] hover:border-white/[0.15] hover:text-white"
             }`}
           >
             <Clock size={12} className="text-zinc-400" />
             <span>History</span>
             {savedRuns.length > 0 ? (
-              <span className="font-mono text-[10px] px-1 rounded bg-white/[0.08] text-zinc-200">
-                {savedRuns.length}
-              </span>
+              <span className="font-mono text-[10px] text-zinc-400">({savedRuns.length})</span>
             ) : null}
           </button>
 
@@ -174,7 +160,7 @@ export default function Wizard() {
             <button
               type="button"
               onClick={reset}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-zinc-400 hover:text-white bg-zinc-900 border border-white/[0.08] hover:border-white/[0.16] transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-zinc-400 hover:text-white bg-zinc-900/80 border border-white/[0.07] hover:border-white/[0.15] transition-colors"
               title="Reset studio session"
             >
               <RotateCcw size={12} />
@@ -186,12 +172,12 @@ export default function Wizard() {
 
       {/* Saved Synthesis History Slide-Over */}
       {historyOpen ? (
-        <div className="absolute inset-x-0 top-[51px] bottom-0 z-30 bg-[#090b0f]/95 backdrop-blur-md p-5 sm:p-6 flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+        <div className="absolute inset-x-0 top-[45px] bottom-0 z-30 bg-[#09090b]/95 backdrop-blur-md p-5 sm:p-6 flex flex-col">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.07]">
             <div>
-              <h3 className="text-sm font-semibold text-white">Local Synthesis History</h3>
+              <h3 className="text-sm font-semibold text-white">Saved Runs</h3>
               <p className="text-xs text-zinc-400">
-                Completed runs stored in your browser for instant inspection or download.
+                Recent configurations stored in your browser.
               </p>
             </div>
             <button
@@ -206,42 +192,30 @@ export default function Wizard() {
 
           {savedRuns.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-2">
-              <Clock size={22} className="text-zinc-600" />
+              <Clock size={20} className="text-zinc-600" />
               <p className="text-xs font-medium text-zinc-300">No saved runs yet</p>
               <p className="text-xs text-zinc-500 max-w-xs">
-                Synthesize a CI/CD pipeline, Terraform module, Kubernetes manifest, or Docker
-                Compose stack and it will appear here automatically.
+                Generated files are saved here automatically for quick access.
               </p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto py-4 space-y-2.5">
+            <div className="flex-1 overflow-y-auto py-4 space-y-2">
               {savedRuns.map((run) => {
-                const runTheme = ARCHETYPE_THEMES[run.archetype] || ARCHETYPE_THEMES.pipeline;
                 const runModel = getAIModelOption(run.modelId);
                 return (
                   <div
                     key={run.id}
-                    className="flex items-center justify-between gap-4 p-3.5 rounded-lg bg-zinc-900/70 border border-white/[0.08] hover:border-white/[0.16] transition-colors"
+                    className="flex items-center justify-between gap-4 p-3.5 rounded-lg bg-zinc-900/60 border border-white/[0.07] hover:border-white/[0.15] transition-colors"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <TechIcon
-                          iconKey={`target-${run.archetype}`}
-                          name={runTheme.name}
-                          size={14}
-                        />
                         <span className="text-xs font-semibold text-zinc-100 truncate">
                           {run.title}
                         </span>
-                        <span
-                          className={`font-mono text-[10px] px-1.5 py-0.5 rounded border capitalize ${runTheme.classes.badge}`}
-                        >
-                          {run.archetype}
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 capitalize">
+                          {run.archetype} · {run.targetPlatform}
                         </span>
-                        <span className="font-mono text-[10px] text-zinc-400">
-                          {run.targetPlatform}
-                        </span>
-                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-white/[0.06]">
+                        <span className="font-mono text-[10px] text-zinc-500">
                           {runModel.shortName}
                         </span>
                       </div>
@@ -262,9 +236,9 @@ export default function Wizard() {
                           });
                           setHistoryOpen(false);
                         }}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${runTheme.classes.primaryBtn}`}
+                        className="px-3 py-1.5 rounded-md text-xs font-semibold text-zinc-950 bg-zinc-100 hover:bg-white transition-colors"
                       >
-                        Open in Editor
+                        Open
                       </button>
                       <button
                         type="button"
@@ -293,7 +267,7 @@ export default function Wizard() {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="h-full p-5 sm:p-6"
+              className="h-full p-4 sm:p-5"
             >
               <Step1Ingest />
             </motion.div>
@@ -305,7 +279,7 @@ export default function Wizard() {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="h-full p-5 sm:p-6"
+              className="h-full p-4 sm:p-5"
             >
               <Step2Analyze />
             </motion.div>
@@ -317,7 +291,7 @@ export default function Wizard() {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="h-full p-5 sm:p-6"
+              className="h-full p-4 sm:p-5"
             >
               <Step3Interrogate />
             </motion.div>

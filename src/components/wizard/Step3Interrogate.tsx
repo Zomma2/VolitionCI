@@ -2,15 +2,7 @@
 
 import { useState } from "react";
 import { useWizardStore } from "@/store/useWizardStore";
-import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
-import TechIcon from "@/components/ui/TechIcon";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CheckSquare,
-} from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check } from "lucide-react";
 
 export default function Step3Interrogate() {
   const {
@@ -26,7 +18,6 @@ export default function Step3Interrogate() {
   } = useWizardStore();
   const [validationNotice, setValidationNotice] = useState(false);
 
-  const theme = ARCHETYPE_THEMES[archetype];
   const answeredCount = agentQuestions.filter((q) => Boolean(userAnswers[q.id])).length;
   const remainingCount = Math.max(0, agentQuestions.length - answeredCount);
 
@@ -42,41 +33,40 @@ export default function Step3Interrogate() {
 
   const headerMeta = {
     pipeline: {
-      title: "DevSecOps Pipeline Interrogation",
+      title: "Pipeline Configuration",
       subtitle:
-        "Select security gates, artifact signing, and deployment controls prior to workflow synthesis.",
+        "Select security gates, artifact signing, and deployment controls prior to generation.",
     },
     terraform: {
-      title: "Terraform State & Topology Parameters",
+      title: "Terraform State & Topology",
       subtitle:
-        "Configure state locking backends, VPC subnet isolation, and KMS encryption posture.",
+        "Configure state locking backends, VPC subnet layout, and encryption settings.",
     },
     kubernetes: {
-      title: "Kubernetes Workload & Policy Matrix",
+      title: "Kubernetes Workload Policy",
       subtitle:
-        "Define ingress controllers, HorizontalPodAutoscaler thresholds, and PodSecurity baselines.",
+        "Define ingress controllers, autoscaling thresholds, and PodSecurity baselines.",
     },
     docker: {
-      title: "Docker Compose Runtime Topology",
+      title: "Compose Runtime Topology",
       subtitle:
-        "Specify bridge network isolation, persistent volume mounts, and healthcheck gates.",
+        "Specify bridge network isolation, persistent volumes, and healthcheck gates.",
     },
   }[archetype];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0 pb-3 border-b border-white/[0.07]">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2.5">
-            <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={19} />
-            <span>{headerMeta.title}</span>
+        <div className="space-y-0.5">
+          <h2 className="text-base font-semibold text-white tracking-tight">
+            {headerMeta.title}
           </h2>
           <p className="text-xs text-zinc-400">{headerMeta.subtitle}</p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="font-mono text-[11px] px-2.5 py-1 rounded-md bg-zinc-900 border border-white/[0.08] text-zinc-300">
-            {answeredCount}/{agentQuestions.length} answered
+          <span className="font-mono text-[11px] px-2.5 py-1 rounded bg-zinc-900 border border-white/[0.07] text-zinc-400">
+            {answeredCount}/{agentQuestions.length} selected
           </span>
           {remainingCount > 0 ? (
             <button
@@ -85,73 +75,55 @@ export default function Step3Interrogate() {
                 applyDefaultAnswers();
                 setValidationNotice(false);
               }}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${theme.classes.outlineBtn}`}
+              className="px-2.5 py-1 rounded text-xs font-medium text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.12] transition-colors"
             >
-              <CheckSquare size={12} />
-              <span>Select Recommended</span>
+              Use Defaults
             </button>
           ) : null}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-1.5 space-y-5 min-h-0 pb-4">
+      <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 min-h-0 pb-4">
         {detectedStack ? (
-          <div className="p-3.5 rounded-lg bg-[#090b0f] border border-white/[0.07] space-y-2">
-            <h3 className="text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider">
-              Detected Stack &amp; Target Context ({targetPlatform})
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
-              {detectedStack.languages?.map((l: string) => (
-                <span
-                  key={l}
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[11px] border ${theme.classes.badge}`}
-                >
-                  <TechIcon name={l} size={11} />
-                  <span>{l}</span>
-                </span>
-              ))}
-              {detectedStack.packageManagers?.map((p: string) => (
-                <span
-                  key={p}
-                  className="px-2 py-0.5 rounded font-mono text-[11px] bg-zinc-800 text-zinc-300 border border-white/[0.08]"
-                >
-                  {p}
-                </span>
-              ))}
-              {detectedStack.hasDockerfile ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[11px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                  <TechIcon iconKey="docker" name="Dockerfile" size={11} />
-                  <span>Dockerfile Detected</span>
-                </span>
-              ) : null}
-            </div>
+          <div className="p-3 rounded-lg bg-[#09090b] border border-white/[0.07] flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mr-1">
+              Stack ({targetPlatform}):
+            </span>
+            {detectedStack.languages?.map((l: string) => (
+              <span
+                key={l}
+                className="px-2 py-0.5 rounded font-mono text-[11px] bg-zinc-900 text-zinc-300 border border-white/[0.07]"
+              >
+                {l}
+              </span>
+            ))}
+            {detectedStack.packageManagers?.map((p: string) => (
+              <span
+                key={p}
+                className="px-2 py-0.5 rounded font-mono text-[11px] bg-zinc-900 text-zinc-400 border border-white/[0.07]"
+              >
+                {p}
+              </span>
+            ))}
           </div>
         ) : null}
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {agentQuestions.map((q, qIdx) => (
             <div
               key={q.id}
-              className="p-4 rounded-lg bg-zinc-900/35 border border-white/[0.06] space-y-3"
+              className="p-4 rounded-lg bg-[#09090b] border border-white/[0.07] space-y-3"
             >
               <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                    Q{qIdx + 1}
-                  </span>
-                  {q.category ? (
-                    <span
-                      className={`font-mono text-[10px] uppercase tracking-wider ${theme.classes.iconActive}`}
-                    >
-                      {q.category}
-                    </span>
-                  ) : null}
+                <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-500 uppercase">
+                  <span>0{qIdx + 1}</span>
+                  {q.category ? <span>· {q.category}</span> : null}
                 </div>
-                <p className="text-xs font-semibold text-zinc-100 pt-1">{q.question}</p>
+                <p className="text-xs font-semibold text-zinc-100 pt-0.5">{q.question}</p>
                 <p className="text-[11px] text-zinc-400 leading-relaxed">{q.rationale}</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {q.options.map((opt, optIdx) => {
                   const isSelected = userAnswers[q.id] === opt;
 
@@ -163,29 +135,20 @@ export default function Step3Interrogate() {
                         setAnswer(q.id, opt);
                         setValidationNotice(false);
                       }}
-                      className={`relative p-3 rounded-lg border flex items-center gap-3 text-left transition-all ${
+                      className={`p-3 rounded-lg border flex items-center justify-between gap-3 text-left transition-all ${
                         isSelected
-                          ? theme.classes.techCardActive
-                          : "bg-[#090b0f]/70 border-white/[0.07] text-zinc-300 hover:bg-zinc-900 hover:border-white/[0.15]"
+                          ? "bg-white/[0.08] border-white/[0.24] text-white"
+                          : "bg-zinc-900/40 border-white/[0.07] text-zinc-300 hover:bg-zinc-900 hover:border-white/[0.15]"
                       }`}
                     >
+                      <span className="text-xs font-medium leading-snug">{opt}</span>
                       {isSelected ? (
-                        <div
-                          className={`absolute top-2.5 right-2.5 w-4 h-4 rounded-full flex items-center justify-center ${theme.classes.dot}`}
-                        >
-                          <Check size={10} className="text-zinc-950 stroke-[2.5]" />
-                        </div>
+                        <Check size={13} className="text-zinc-100 shrink-0" />
                       ) : optIdx === 0 ? (
-                        <span className="absolute top-2 right-2 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
-                          Recommended
+                        <span className="font-mono text-[9px] uppercase text-zinc-500 shrink-0">
+                          Default
                         </span>
                       ) : null}
-
-                      <div className="shrink-0 w-8 h-8 rounded-md bg-zinc-900 border border-white/[0.08] flex items-center justify-center">
-                        <TechIcon name={opt} size={17} />
-                      </div>
-
-                      <span className="text-xs font-medium leading-snug pr-6">{opt}</span>
                     </button>
                   );
                 })}
@@ -200,8 +163,8 @@ export default function Step3Interrogate() {
           <div className="flex items-center gap-2">
             <AlertCircle size={14} className="shrink-0" />
             <span>
-              Please answer {remainingCount} remaining{" "}
-              {remainingCount === 1 ? "question" : "questions"} or apply recommended defaults.
+              Select {remainingCount} remaining{" "}
+              {remainingCount === 1 ? "option" : "options"} or use defaults.
             </span>
           </div>
           <button
@@ -212,12 +175,12 @@ export default function Step3Interrogate() {
             }}
             className="font-semibold underline hover:text-amber-200 shrink-0"
           >
-            Fill defaults
+            Use defaults
           </button>
         </div>
       ) : null}
 
-      <div className="pt-3 border-t border-white/[0.08] flex gap-3 shrink-0">
+      <div className="pt-3 border-t border-white/[0.07] flex gap-3 shrink-0">
         <button
           type="button"
           onClick={() => setStep(1)}
@@ -229,17 +192,17 @@ export default function Step3Interrogate() {
         <button
           type="button"
           onClick={handleSynthesize}
-          className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs transition-colors ${theme.classes.primaryBtn}`}
+          className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs text-zinc-950 bg-zinc-100 hover:bg-white transition-colors"
         >
           <span>
-            Synthesize{" "}
+            Generate{" "}
             {archetype === "terraform"
-              ? "Terraform Modules"
+              ? "Terraform Configuration"
               : archetype === "kubernetes"
                 ? "Kubernetes Manifests"
                 : archetype === "docker"
                   ? "Docker Compose"
-                  : "CI/CD Pipeline"}
+                  : "CI/CD Workflow"}
           </span>
           <ArrowRight size={14} />
         </button>

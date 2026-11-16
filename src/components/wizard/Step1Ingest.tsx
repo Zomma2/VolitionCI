@@ -5,17 +5,7 @@ import { useWizardStore, Archetype } from "@/store/useWizardStore";
 import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
 import { AI_MODEL_OPTIONS, getAIModelOption } from "@/lib/aiModels";
 import TechIcon from "@/components/ui/TechIcon";
-import {
-  ArrowRight,
-  Check,
-  Cpu,
-  Globe,
-  Grip,
-  MessageSquare,
-  RotateCcw,
-  Search,
-  Terminal,
-} from "lucide-react";
+import { ArrowRight, Check, Globe, RotateCcw } from "lucide-react";
 
 const MAX_CHAT_TURNS = 3;
 
@@ -31,7 +21,7 @@ const PLATFORM_CONFIG: Record<
   { label: string; options: PlatformOption[]; default: string }
 > = {
   pipeline: {
-    label: "Target CI/CD",
+    label: "Provider",
     default: "GitHub Actions",
     options: [
       { name: "GitHub Actions", iconKey: "githubactions" },
@@ -42,7 +32,7 @@ const PLATFORM_CONFIG: Record<
     ],
   },
   terraform: {
-    label: "Cloud Provider",
+    label: "Cloud",
     default: "AWS",
     options: [
       { name: "AWS", iconKey: "aws" },
@@ -52,7 +42,7 @@ const PLATFORM_CONFIG: Record<
     ],
   },
   kubernetes: {
-    label: "Cluster Target",
+    label: "Cluster",
     default: "Generic Kubernetes",
     options: [
       { name: "Generic Kubernetes", iconKey: "kubernetes" },
@@ -63,7 +53,7 @@ const PLATFORM_CONFIG: Record<
     ],
   },
   docker: {
-    label: "Runtime Profile",
+    label: "Profile",
     default: "Local Development",
     options: [
       { name: "Local Development", iconKey: "runtime-local" },
@@ -484,69 +474,40 @@ export default function Step1Ingest() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden space-y-3">
-      {/* 1. Archetype Generation Target Cards */}
-      <div className="space-y-2 shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-zinc-100 tracking-tight">
-            Select Generation Target
-          </h2>
-          <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-zinc-300 px-2 py-0.5 rounded bg-zinc-900 border border-white/[0.07]">
-            <span className={`w-1.5 h-1.5 rounded-full ${theme.classes.dot}`} />
-            <span>{theme.validationBadge}</span>
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {ARCHETYPE_LIST.map((archId) => {
-            const cardTheme = ARCHETYPE_THEMES[archId];
-            const isSelected = archetype === archId;
-            return (
-              <button
-                key={archId}
-                type="button"
-                onClick={() => handleArchetypeChange(archId)}
-                className={`p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${
-                  isSelected
-                    ? cardTheme.classes.cardActive
-                    : "bg-[#090b0f]/70 border-white/[0.07] text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 hover:border-white/[0.14]"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div
-                    className={`w-6 h-6 rounded-md flex items-center justify-center border transition-colors ${
-                      isSelected
-                        ? "bg-zinc-950/70 border-white/[0.15]"
-                        : "bg-zinc-900 border-white/[0.06]"
-                    }`}
-                  >
-                    <TechIcon iconKey={`target-${archId}`} name={cardTheme.name} size={15} />
-                  </div>
-                  <span className="font-mono text-[10px] text-zinc-400 truncate max-w-[125px]">
-                    {cardTheme.artifact}
-                  </span>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-semibold text-zinc-100">{cardTheme.name}</span>
-                    {isSelected ? (
-                      <span className={`w-1.5 h-1.5 rounded-full ${cardTheme.classes.dot}`} />
-                    ) : null}
-                  </div>
-                  <div className="text-[11px] text-zinc-400 leading-tight truncate mt-0.5">
-                    {cardTheme.subtitle}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+      {/* 1. Clean Generation Target Tabs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 shrink-0">
+        {ARCHETYPE_LIST.map((archId) => {
+          const cardTheme = ARCHETYPE_THEMES[archId];
+          const isSelected = archetype === archId;
+          return (
+            <button
+              key={archId}
+              type="button"
+              onClick={() => handleArchetypeChange(archId)}
+              className={`px-3.5 py-2.5 rounded-lg border text-left transition-all ${
+                isSelected
+                  ? "bg-white/[0.06] border-white/[0.22] text-white"
+                  : "bg-[#09090b] border-white/[0.07] text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-200 hover:border-white/[0.14]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-zinc-100">{cardTheme.name}</span>
+                <span className="font-mono text-[10px] text-zinc-500 truncate">
+                  {cardTheme.artifact}
+                </span>
+              </div>
+              <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                {cardTheme.subtitle}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* 2. Target Platform & AI Model Selector Bar (Right at Step 1 Beginning) */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-2 shrink-0">
-        {/* Platform Selector */}
-        <div className="xl:col-span-5 flex flex-wrap items-center gap-1.5 py-2 px-3 rounded-lg bg-[#090b0f]/80 border border-white/[0.07]">
-          <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider mr-1 shrink-0">
+      {/* 2. Clean Platform & Model Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 py-2 px-3 rounded-lg bg-[#09090b] border border-white/[0.07] shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mr-1">
             {currentPlatformConfig.label}:
           </span>
           {currentPlatformConfig.options.map((opt) => {
@@ -559,24 +520,21 @@ export default function Step1Ingest() {
                   setTargetPlatform(opt.name);
                   setManualTech([]);
                 }}
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+                className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
                   isSelected
-                    ? theme.classes.platformActive
-                    : "bg-zinc-900/70 border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:border-white/[0.15]"
+                    ? "bg-zinc-100 text-zinc-950 border-zinc-100"
+                    : "bg-zinc-900/60 border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:border-white/[0.15]"
                 }`}
               >
-                <TechIcon iconKey={opt.iconKey} name={opt.name} size={12} />
-                <span>{opt.name}</span>
+                {opt.name}
               </button>
             );
           })}
         </div>
 
-        {/* AI Engine / Multi-Model Selector */}
-        <div className="xl:col-span-7 flex flex-wrap items-center gap-1.5 py-2 px-3 rounded-lg bg-[#090b0f]/80 border border-white/[0.07]">
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider mr-1 shrink-0">
-            <Cpu size={11} className={theme.classes.iconActive} />
-            <span>AI Engine:</span>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mr-1">
+            Model:
           </span>
           {AI_MODEL_OPTIONS.map((modelOpt) => {
             const isSelected = selectedModel === modelOpt.id;
@@ -586,41 +544,34 @@ export default function Step1Ingest() {
                 type="button"
                 onClick={() => setSelectedModel(modelOpt.id)}
                 title={`${modelOpt.name} (${modelOpt.provider}) — ${modelOpt.description}`}
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+                className={`px-2 py-1 rounded font-mono text-[11px] border transition-colors ${
                   isSelected
-                    ? theme.classes.platformActive
-                    : "bg-zinc-900/70 border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:border-white/[0.15]"
+                    ? "bg-white/[0.1] text-white border-white/[0.24]"
+                    : "bg-transparent border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
                 }`}
               >
-                <TechIcon iconKey={modelOpt.iconKey} name={modelOpt.name} size={12} />
-                <span>{modelOpt.shortName}</span>
-                {modelOpt.id === "multi-agent" ? (
-                  <span className="hidden sm:inline font-mono text-[9px] px-1 rounded bg-white/[0.08] text-zinc-200">
-                    4x
-                  </span>
-                ) : null}
+                {modelOpt.shortName}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* 3. Ingestion Mode Switcher */}
-      <div className="grid grid-cols-3 gap-1 bg-[#090b0f] p-1 rounded-lg border border-white/[0.07] shrink-0">
+      {/* 3. Input Mode Segmented Control */}
+      <div className="grid grid-cols-3 gap-1 bg-[#09090b] p-1 rounded-lg border border-white/[0.07] shrink-0">
         <button
           type="button"
           onClick={() => {
             setIngestMode("chat");
             setError("");
           }}
-          className={`flex items-center justify-center gap-2 py-1.5 px-2 text-xs font-medium rounded-md transition-colors ${
+          className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors ${
             ingestMode === "chat"
-              ? "bg-zinc-800/95 text-white border border-white/[0.1]"
+              ? "bg-zinc-800/90 text-white"
               : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
-          <MessageSquare size={13} className={ingestMode === "chat" ? theme.classes.iconActive : ""} />
-          <span>Consultative AI</span>
+          Architect Chat
         </button>
         <button
           type="button"
@@ -628,14 +579,13 @@ export default function Step1Ingest() {
             setIngestMode("scan");
             setError("");
           }}
-          className={`flex items-center justify-center gap-2 py-1.5 px-2 text-xs font-medium rounded-md transition-colors ${
+          className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors ${
             ingestMode === "scan"
-              ? "bg-zinc-800/95 text-white border border-white/[0.1]"
+              ? "bg-zinc-800/90 text-white"
               : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
-          <Search size={13} className={ingestMode === "scan" ? theme.classes.iconActive : ""} />
-          <span>Scan GitHub Repo</span>
+          GitHub Repository
         </button>
         <button
           type="button"
@@ -643,38 +593,30 @@ export default function Step1Ingest() {
             setIngestMode("manual");
             setError("");
           }}
-          className={`flex items-center justify-center gap-2 py-1.5 px-2 text-xs font-medium rounded-md transition-colors ${
+          className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors ${
             ingestMode === "manual"
-              ? "bg-zinc-800/95 text-white border border-white/[0.1]"
+              ? "bg-zinc-800/90 text-white"
               : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
-          <Grip size={13} className={ingestMode === "manual" ? theme.classes.iconActive : ""} />
-          <span>Stack Composer</span>
+          Stack Composer
         </button>
       </div>
 
-      {/* 4. Active Mode Workspace */}
+      {/* 4. Active Workspace */}
       {ingestMode === "chat" ? (
-        <div className="flex-1 flex flex-col min-h-0 bg-[#090b0f] border border-white/[0.07] rounded-lg p-4">
+        <div className="flex-1 flex flex-col min-h-0 bg-[#09090b] border border-white/[0.07] rounded-lg p-4">
           <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-white/[0.06] shrink-0">
             <div className="flex items-center gap-2 min-w-0">
-              <Terminal size={13} className={theme.classes.iconActive} />
-              <span className="text-xs font-semibold text-zinc-100 truncate">
+              <span className="text-xs font-medium text-zinc-200 truncate">
                 {theme.architectTitle}
               </span>
-              <span
-                className={`hidden md:inline-flex font-mono text-[10px] px-1.5 py-0.5 rounded border ${theme.classes.badge}`}
-              >
-                {targetPlatform}
+              <span className="font-mono text-[10px] text-zinc-500">
+                ({targetPlatform})
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="hidden sm:inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-900 border border-white/[0.07] text-zinc-300">
-                <TechIcon iconKey={activeModelMeta.iconKey} name={activeModelMeta.name} size={11} />
-                <span>{activeModelMeta.shortName}</span>
-              </span>
-              <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-900 border border-white/[0.07] text-zinc-400">
+              <span className="font-mono text-[10px] text-zinc-500">
                 Turn {activeSession.revisions}/{MAX_CHAT_TURNS}
               </span>
               {activeSession.history.length > 0 ? (
@@ -692,15 +634,11 @@ export default function Step1Ingest() {
 
           <div className="flex-1 overflow-y-auto space-y-3 pb-2 text-xs min-h-0 pr-1">
             {activeSession.history.length === 0 ? (
-              <div className="h-full flex flex-col justify-center py-2 space-y-3.5">
+              <div className="h-full flex flex-col justify-center py-2 space-y-4">
                 <div className="space-y-1 text-center">
-                  <p className="text-sm font-semibold text-zinc-100">{theme.architectHeadline}</p>
+                  <p className="text-sm font-medium text-zinc-100">{theme.architectHeadline}</p>
                   <p className="text-xs text-zinc-400 max-w-xl mx-auto leading-relaxed">
                     {theme.architectBrief}
-                  </p>
-                  <p className="font-mono text-[10px] text-zinc-500 pt-0.5">
-                    Active Engine: <span className="text-zinc-300">{activeModelMeta.name}</span> —{" "}
-                    {activeModelMeta.description}
                   </p>
                 </div>
 
@@ -713,17 +651,15 @@ export default function Step1Ingest() {
                         setTargetPlatform(item.platform);
                         submitChatPrompt(item.prompt, archetype, item.platform);
                       }}
-                      className={`p-3 rounded-lg bg-zinc-900/70 hover:bg-zinc-900 border border-white/[0.07] text-left transition-all group ${theme.classes.starterHover}`}
+                      className="p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-900 border border-white/[0.07] hover:border-white/[0.18] text-left transition-all group"
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span
-                          className={`text-xs font-semibold text-zinc-200 transition-colors truncate ${theme.classes.starterTitleHover}`}
-                        >
+                        <span className="text-xs font-medium text-zinc-200 group-hover:text-white truncate">
                           {item.label}
                         </span>
                         <ArrowRight
                           size={12}
-                          className="text-zinc-600 group-hover:text-zinc-200 transition-colors shrink-0"
+                          className="text-zinc-600 group-hover:text-zinc-300 transition-colors shrink-0"
                         />
                       </div>
                       <p className="text-[11px] text-zinc-500 line-clamp-2 leading-snug">
@@ -743,14 +679,13 @@ export default function Step1Ingest() {
                 <div
                   className={`p-3 rounded-lg max-w-[88%] whitespace-pre-line leading-relaxed ${
                     msg.role === "user"
-                      ? theme.classes.userBubble
-                      : "bg-zinc-900/90 text-zinc-200 border border-white/[0.08]"
+                      ? "bg-white/[0.08] text-zinc-100 border border-white/[0.14]"
+                      : "bg-zinc-900/80 text-zinc-200 border border-white/[0.07]"
                   }`}
                 >
                   {msg.role === "ai" && msg.modelUsed ? (
-                    <div className="font-mono text-[10px] text-zinc-400 mb-1.5 flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${theme.classes.dot}`} />
-                      <span>Answered by {msg.modelUsed}</span>
+                    <div className="font-mono text-[10px] text-zinc-500 mb-1">
+                      {msg.modelUsed}
                     </div>
                   ) : null}
                   {msg.content}
@@ -759,22 +694,19 @@ export default function Step1Ingest() {
             ))}
 
             {activeSession.config ? (
-              <div
-                className={`mt-3 p-4 bg-zinc-900/60 border rounded-lg space-y-3 ${theme.classes.draftPanelBorder}`}
-              >
+              <div className="mt-3 p-4 bg-zinc-900/50 border border-white/[0.12] rounded-lg space-y-3">
                 <div className="flex items-center justify-between border-b border-white/[0.07] pb-2">
-                  <div className={`font-semibold text-xs flex items-center gap-2 ${theme.classes.draftTitle}`}>
-                    <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={14} />
-                    <span>Extracted {theme.shortLabel} Architecture Draft</span>
+                  <div className="font-semibold text-xs text-zinc-100">
+                    Extracted {theme.shortLabel} Specification
                   </div>
-                  <span className="font-mono text-[10px] text-zinc-400">
-                    Click tools to toggle inclusion
+                  <span className="font-mono text-[10px] text-zinc-500">
+                    Click tools to toggle
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#090b0f] p-2.5 rounded-md border border-white/[0.06] font-mono text-[11px]">
-                  <div className="text-zinc-400 flex items-center gap-1.5">
-                    <span>target:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#09090b] p-2.5 rounded border border-white/[0.06] font-mono text-[11px]">
+                  <div className="text-zinc-400">
+                    target:{" "}
                     <span className="text-zinc-100 capitalize">
                       {activeSession.config.archetype || archetype} /{" "}
                       {activeSession.config.targetPlatform || targetPlatform}
@@ -791,8 +723,8 @@ export default function Step1Ingest() {
 
                 {activeSession.selectedTech.length > 0 ? (
                   <div className="space-y-1.5">
-                    <div className="text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider">
-                      Active Stack ({activeSession.selectedTech.length})
+                    <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
+                      Selected Stack ({activeSession.selectedTech.length})
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {activeSession.selectedTech.map((tech) => (
@@ -800,11 +732,10 @@ export default function Step1Ingest() {
                           key={tech}
                           type="button"
                           onClick={() => toggleChatTech(tech)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] transition-colors ${theme.classes.chipActive}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/[0.08] text-zinc-100 border border-white/[0.15] text-[11px] hover:bg-white/[0.12] transition-colors"
                         >
-                          <TechIcon name={tech} size={12} />
                           <span>{tech}</span>
-                          <Check size={11} className={theme.classes.iconActive} />
+                          <Check size={11} className="text-zinc-300" />
                         </button>
                       ))}
                     </div>
@@ -814,8 +745,8 @@ export default function Step1Ingest() {
                 {activeSession.config.recommendations &&
                 activeSession.config.recommendations.length > 0 ? (
                   <div className="pt-2 border-t border-white/[0.06] space-y-2">
-                    <div className="font-mono font-semibold text-zinc-400 text-[10px] uppercase tracking-wider">
-                      Recommended {theme.shortLabel} &amp; Security Tooling
+                    <div className="font-mono text-zinc-400 text-[10px] uppercase tracking-wider">
+                      Recommended Tooling
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {activeSession.config.recommendations.map((rec) => {
@@ -827,14 +758,14 @@ export default function Step1Ingest() {
                             onClick={() => toggleChatTech(rec.name)}
                             className={`flex items-start gap-2.5 p-2.5 text-left rounded-lg border transition-colors ${
                               isAdded
-                                ? theme.classes.techCardActive
-                                : "bg-[#090b0f]/80 hover:bg-zinc-900 border-white/[0.07]"
+                                ? "bg-white/[0.07] border-white/[0.22] text-white"
+                                : "bg-[#09090b] hover:bg-zinc-900 border-white/[0.07]"
                             }`}
                           >
                             <div
                               className={`mt-0.5 shrink-0 w-4 h-4 rounded flex items-center justify-center border transition-colors ${
                                 isAdded
-                                  ? theme.classes.checkboxActive
+                                  ? "bg-zinc-100 border-zinc-100"
                                   : "border-zinc-600 bg-transparent"
                               }`}
                             >
@@ -847,7 +778,7 @@ export default function Step1Ingest() {
                                 slug={rec.slug}
                                 color={rec.color}
                                 name={rec.name}
-                                size={15}
+                                size={14}
                               />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -866,7 +797,7 @@ export default function Step1Ingest() {
             ) : null}
 
             {isChatLoading ? (
-              <div className={`font-mono animate-pulse text-[11px] pl-1 ${theme.classes.iconActive}`}>
+              <div className="font-mono text-zinc-400 animate-pulse text-[11px] pl-1">
                 [{activeModelMeta.shortName}] {theme.loadingStatusText}
               </div>
             ) : null}
@@ -883,13 +814,13 @@ export default function Step1Ingest() {
               onChange={(e) => setChatInput(e.target.value)}
               placeholder={
                 activeSession.revisions >= MAX_CHAT_TURNS
-                  ? "Consultation turns complete — proceed to interrogation or clear session."
+                  ? "Consultation complete — proceed to configuration or clear session."
                   : activeSession.history.length > 0
-                    ? `Answer ${theme.shortLabel} follow-up questions or refine stack requirements...`
+                    ? `Answer follow-up questions or refine ${theme.shortLabel} requirements...`
                     : theme.chatPlaceholder
               }
               disabled={activeSession.revisions >= MAX_CHAT_TURNS || isChatLoading}
-              className={`flex-1 bg-zinc-900 border border-white/[0.09] text-zinc-100 placeholder-zinc-500 text-xs rounded-lg px-3.5 py-2.5 focus:outline-none transition-colors disabled:opacity-50 ${theme.classes.inputFocus}`}
+              className="flex-1 bg-zinc-900 border border-white/[0.09] text-zinc-100 placeholder-zinc-500 text-xs rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-white/[0.28] transition-colors disabled:opacity-50"
             />
             <button
               type="submit"
@@ -909,18 +840,16 @@ export default function Step1Ingest() {
               <button
                 type="button"
                 onClick={resetChatSession}
-                className="px-4 py-2.5 rounded-lg font-medium text-xs text-zinc-300 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] transition-colors"
+                className="px-4 py-2 rounded-lg font-medium text-xs text-zinc-300 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={proceedFromChat}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs transition-colors ${theme.classes.primaryBtn}`}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-semibold text-xs text-zinc-950 bg-zinc-100 hover:bg-white transition-colors"
               >
-                <span>
-                  Proceed to {theme.shortLabel} Interrogation ({activeModelMeta.shortName})
-                </span>
+                <span>Continue to Configuration</span>
                 <ArrowRight size={14} />
               </button>
             </div>
@@ -932,14 +861,14 @@ export default function Step1Ingest() {
           className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0"
         >
           {ingestMode === "scan" ? (
-            <div className="flex-1 flex flex-col justify-between min-h-0 bg-[#090b0f] border border-white/[0.07] rounded-lg p-4">
+            <div className="flex-1 flex flex-col justify-between min-h-0 bg-[#09090b] border border-white/[0.07] rounded-lg p-4">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label
                     htmlFor="repo-url-input"
-                    className="block text-[11px] font-mono font-semibold text-zinc-400 uppercase tracking-wider"
+                    className="block text-[11px] font-mono text-zinc-400 uppercase tracking-wider"
                   >
-                    Public GitHub Repository URL ({theme.name} Target)
+                    Public GitHub Repository URL
                   </label>
                   <div className="relative">
                     <input
@@ -948,20 +877,20 @@ export default function Step1Ingest() {
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
                       placeholder="https://github.com/owner/repository"
-                      className={`w-full bg-zinc-900 border border-white/[0.09] text-zinc-100 text-xs rounded-lg pl-9 pr-3.5 py-2.5 placeholder-zinc-500 focus:outline-none transition-colors font-mono ${theme.classes.inputFocus}`}
+                      className="w-full bg-zinc-900 border border-white/[0.09] text-zinc-100 text-xs rounded-lg pl-9 pr-3.5 py-2.5 placeholder-zinc-500 focus:outline-none focus:border-white/[0.28] transition-colors font-mono"
                       required
                     />
                     <Globe
                       size={14}
-                      className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme.classes.iconActive}`}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
                     />
                   </div>
                   {error ? <p className="text-xs text-red-400">{error}</p> : null}
                 </div>
 
                 <div className="space-y-2">
-                  <span className="block text-[11px] font-mono text-zinc-400">
-                    Curated {theme.name} reference repositories:
+                  <span className="block text-[11px] font-mono text-zinc-500">
+                    Sample repositories:
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {theme.sampleRepos.map((sample) => {
@@ -976,14 +905,11 @@ export default function Step1Ingest() {
                           }}
                           className={`px-3 py-2 rounded-lg border text-left flex items-center justify-between gap-2 transition-colors ${
                             activeSample
-                              ? theme.classes.techCardActive
-                              : "bg-zinc-900/70 hover:bg-zinc-900 border-white/[0.08] text-zinc-300"
+                              ? "bg-white/[0.07] border-white/[0.22] text-white"
+                              : "bg-zinc-900/60 hover:bg-zinc-900 border-white/[0.07] text-zinc-300"
                           }`}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <TechIcon iconKey="github" name="GitHub" size={14} />
-                            <span className="font-mono text-[11px] truncate">{sample.label}</span>
-                          </div>
+                          <span className="font-mono text-[11px] truncate">{sample.label}</span>
                           <span className="font-mono text-[10px] text-zinc-500 shrink-0">
                             {sample.note}
                           </span>
@@ -994,15 +920,15 @@ export default function Step1Ingest() {
                 </div>
               </div>
 
-              <div className="p-3 rounded-md bg-zinc-900/60 border border-white/[0.06] text-[11px] text-zinc-400 leading-relaxed">
+              <div className="p-3 rounded-md bg-zinc-900/50 border border-white/[0.06] text-[11px] text-zinc-400 leading-relaxed">
                 {theme.scanInspectorNote}
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto pr-1 min-h-[120px] bg-[#090b0f] border border-white/[0.07] rounded-lg p-4">
+            <div className="flex-1 overflow-y-auto pr-1 min-h-[120px] bg-[#09090b] border border-white/[0.07] rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-mono font-semibold text-zinc-400 uppercase tracking-wider">
-                  Compose {targetPlatform} {theme.shortLabel} Stack ({manualTech.length} selected)
+                <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
+                  {targetPlatform} Components ({manualTech.length} selected)
                 </span>
                 {manualTech.length > 0 ? (
                   <button
@@ -1010,7 +936,7 @@ export default function Step1Ingest() {
                     onClick={() => setManualTech([])}
                     className="text-[11px] text-zinc-400 hover:text-white"
                   >
-                    Clear selection
+                    Clear
                   </button>
                 ) : null}
               </div>
@@ -1024,12 +950,12 @@ export default function Step1Ingest() {
                       onClick={() => toggleManualTech(tech.name)}
                       className={`relative p-2.5 rounded-lg border flex items-center gap-2.5 text-left transition-all ${
                         isSelected
-                          ? theme.classes.techCardActive
-                          : "bg-zinc-900/55 border-white/[0.07] text-zinc-300 hover:bg-zinc-900 hover:border-white/[0.15]"
+                          ? "bg-white/[0.08] border-white/[0.24] text-white"
+                          : "bg-zinc-900/45 border-white/[0.07] text-zinc-300 hover:bg-zinc-900 hover:border-white/[0.15]"
                       }`}
                     >
-                      <div className="w-7 h-7 rounded-md bg-zinc-950/80 border border-white/[0.07] flex items-center justify-center shrink-0">
-                        <TechIcon iconKey={tech.iconKey} name={tech.name} size={17} />
+                      <div className="w-7 h-7 rounded bg-zinc-950 border border-white/[0.07] flex items-center justify-center shrink-0">
+                        <TechIcon iconKey={tech.iconKey} name={tech.name} size={15} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-medium text-zinc-100 truncate">
@@ -1040,7 +966,7 @@ export default function Step1Ingest() {
                         </div>
                       </div>
                       {isSelected ? (
-                        <Check size={13} className={`${theme.classes.iconActive} shrink-0`} />
+                        <Check size={12} className="text-zinc-200 shrink-0" />
                       ) : null}
                     </button>
                   );
@@ -1052,11 +978,9 @@ export default function Step1Ingest() {
 
           <button
             type="submit"
-            className={`shrink-0 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs transition-colors ${theme.classes.primaryBtn}`}
+            className="shrink-0 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-xs text-zinc-950 bg-zinc-100 hover:bg-white transition-colors"
           >
-            <span>
-              Analyze &amp; Configure {theme.name} via {activeModelMeta.shortName}
-            </span>
+            <span>Continue with {targetPlatform}</span>
             <ArrowRight size={14} />
           </button>
         </form>

@@ -5,15 +5,14 @@ import dynamic from "next/dynamic";
 import { useWizardStore } from "@/store/useWizardStore";
 import { ARCHETYPE_THEMES } from "@/lib/archetypeTheme";
 import { AI_MODEL_OPTIONS, ModelSelectionId, getAIModelOption } from "@/lib/aiModels";
-import TechIcon from "@/components/ui/TechIcon";
 import {
-  Activity,
   AlertTriangle,
   ArrowLeft,
   CheckCheck,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Copy,
-  Cpu,
   Download,
   Loader2,
   Lock,
@@ -25,8 +24,8 @@ import {
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center h-full bg-[#0d0f14] font-mono text-zinc-500 text-xs">
-      Loading code editor...
+    <div className="flex items-center justify-center h-full bg-[#09090b] font-mono text-zinc-500 text-xs">
+      Loading editor...
     </div>
   ),
 });
@@ -100,9 +99,7 @@ export default function Step4Execution() {
   const {
     archetype,
     status,
-    repoUrl,
     repoContext,
-    userAnswers,
     targetPlatform,
     selectedModel,
     ciProvider,
@@ -125,6 +122,7 @@ export default function Step4Execution() {
   const [currentModule, setCurrentModule] = useState("");
   const [moduleProgress, setModuleProgress] = useState({ current: 0, total: 0 });
   const [synthTrigger, setSynthTrigger] = useState(0);
+  const [telemetryExpanded, setTelemetryExpanded] = useState(false);
 
   const theme = ARCHETYPE_THEMES[archetype];
   const activePlatform = targetPlatform || ciProvider;
@@ -132,8 +130,6 @@ export default function Step4Execution() {
   const activeModelMeta = getAIModelOption(selectedModel);
 
   useEffect(() => {
-    // If we loaded a pre-built blueprint directly into the editor (status is already "complete" on mount
-    // and synthTrigger has not been clicked), do not overwrite it with an API call.
     const currentState = useWizardStore.getState();
     if (currentState.status === "complete" && synthTrigger === 0 && currentState.generatedCode) {
       return;
@@ -195,7 +191,7 @@ export default function Step4Execution() {
           completeWithCode(parsed.code || latestPartialCode, parsed.warning);
         } else if (eventType === "error") {
           receivedTerminalEvent = true;
-          setStatus("error", parsed.message || "Synthesis failed.");
+          setStatus("error", parsed.message || "Generation failed.");
         }
       } catch (parseErr) {
         console.error("SSE Frame Parse Error:", parseErr);
@@ -230,7 +226,7 @@ export default function Step4Execution() {
 
         if (!res.ok || !res.body) {
           if (isActive) {
-            setStatus("error", `Synthesis server responded with HTTP ${res.status}`);
+            setStatus("error", `Server responded with HTTP ${res.status}`);
           }
           return;
         }
@@ -266,7 +262,7 @@ export default function Step4Execution() {
               } else {
                 setStatus(
                   "error",
-                  "Synthesis stream closed before completion. Click Retry below to run again."
+                  "Connection closed before completion. Click Retry below to run again."
                 );
               }
             }
@@ -276,7 +272,7 @@ export default function Step4Execution() {
       } catch (err: any) {
         if (err?.name === "AbortError") return;
         if (isActive) {
-          setStatus("error", "Network stream interrupted during synthesis.");
+          setStatus("error", "Network connection interrupted during generation.");
         }
       }
     };
@@ -314,29 +310,29 @@ export default function Step4Execution() {
   if (status === "error") {
     return (
       <div className="flex flex-col h-full items-center justify-center space-y-4 text-center p-6">
-        <div className="w-12 h-12 rounded-lg bg-red-500/10 border border-red-500/25 flex items-center justify-center">
-          <AlertTriangle size={22} className="text-red-400" />
+        <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/25 flex items-center justify-center">
+          <AlertTriangle size={18} className="text-red-400" />
         </div>
         <div className="space-y-1 max-w-md">
-          <h3 className="text-base font-semibold text-white">Generation Halted</h3>
+          <h3 className="text-sm font-semibold text-white">Generation Failed</h3>
           <p className="text-xs text-zinc-400 leading-relaxed">{errorMessage}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setStep(3)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-zinc-100 bg-zinc-800 hover:bg-zinc-700 border border-white/[0.1] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-medium text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-white/[0.1] transition-colors"
           >
             <ArrowLeft size={13} />
-            Back to Configuration
+            Back
           </button>
           <button
             type="button"
             onClick={() => handleRerunWithModel("multi-agent")}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold transition-colors ${theme.classes.primaryBtn}`}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-semibold text-zinc-950 bg-zinc-100 hover:bg-white transition-colors"
           >
             <RefreshCw size={13} />
-            Retry with Multi-Model Ensemble
+            Retry
           </button>
         </div>
       </div>
@@ -355,76 +351,60 @@ export default function Step4Execution() {
             : 1;
 
     const phases = [
-      { id: 1, label: `Phase 1 · ${theme.shortLabel} Architecture Plan` },
+      { id: 1, label: `01 · ${theme.shortLabel} Architecture Plan` },
       {
         id: 2,
         label:
           moduleProgress.total > 1
-            ? `Phase 2 · Code Generation & Syntax Check (${moduleProgress.current}/${moduleProgress.total}: ${currentModule})`
-            : `Phase 2 · ${theme.shortLabel} Generation & Syntax Check`,
+            ? `02 · Code Generation & Syntax Check (${currentModule})`
+            : `02 · ${theme.shortLabel} Generation & Syntax Check`,
       },
-      { id: 3, label: "Phase 3 · Completeness Check" },
+      { id: 3, label: "03 · Completeness Verification" },
     ];
 
     return (
       <div className="flex flex-col items-center justify-center h-full px-6">
-        <div
-          className={`w-full max-w-xl rounded-xl bg-[#090b0f] border p-6 space-y-5 ${theme.classes.draftPanelBorder}`}
-        >
+        <div className="w-full max-w-lg rounded-xl bg-[#09090b] border border-white/[0.08] p-6 space-y-5">
           <div className="flex items-center justify-between border-b border-white/[0.07] pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-white/[0.1] flex items-center justify-center">
-                <TechIcon iconKey={activeModelMeta.iconKey} name={activeModelMeta.name} size={18} />
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-semibold text-white">
-                  Generating {meta.filePath}
-                </h3>
-                <p className="font-mono text-[11px] text-zinc-400">
-                  {isHealing
-                    ? `Refining syntax (${currentModule || `Pass ${attempt}`})`
-                    : `Engine: ${activeModelMeta.name} · Target: ${activePlatform}`}
-                </p>
-              </div>
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-semibold text-zinc-100">
+                Generating {meta.filePath}
+              </h3>
+              <p className="font-mono text-[11px] text-zinc-400">
+                {isHealing
+                  ? `Refining syntax (${currentModule || `Pass ${attempt}`})`
+                  : `${activeModelMeta.name} · ${activePlatform}`}
+              </p>
             </div>
-            {isHealing ? (
-              <span className="px-2.5 py-1 rounded font-mono text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/25">
-                REFINING
-              </span>
-            ) : (
-              <Loader2 size={16} className={`${theme.classes.spinner} animate-spin`} />
-            )}
+            <Loader2 size={15} className="text-zinc-300 animate-spin" />
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {phases.map((p) => {
               const done = phaseIndex > p.id;
               const active = phaseIndex === p.id;
               return (
                 <div
                   key={p.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border text-xs ${
+                  className={`flex items-center justify-between p-2.5 rounded-lg border text-xs ${
                     active
-                      ? theme.classes.techCardActive
+                      ? "bg-white/[0.06] border-white/[0.18] text-white"
                       : done
-                        ? "bg-emerald-500/[0.05] border-emerald-500/20 text-zinc-300"
-                        : "bg-zinc-900/40 border-white/[0.05] text-zinc-500"
+                        ? "bg-zinc-900/40 border-white/[0.06] text-zinc-300"
+                        : "bg-zinc-900/20 border-white/[0.04] text-zinc-500"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
                     {done ? (
-                      <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                      <CheckCircle2 size={13} className="text-zinc-300 shrink-0" />
                     ) : active ? (
-                      <Loader2
-                        size={14}
-                        className={`${theme.classes.spinner} animate-spin shrink-0`}
-                      />
+                      <Loader2 size={13} className="text-zinc-200 animate-spin shrink-0" />
                     ) : (
-                      <span className="w-3.5 h-3.5 rounded-full border border-zinc-700 shrink-0" />
+                      <span className="w-3 h-3 rounded-full border border-zinc-700 shrink-0" />
                     )}
-                    <span className="font-medium">{p.label}</span>
+                    <span className="font-medium truncate">{p.label}</span>
                   </div>
-                  <span className="font-mono text-[10px] uppercase">
+                  <span className="font-mono text-[10px] uppercase text-zinc-400">
                     {done ? "Done" : active ? "Active" : "Pending"}
                   </span>
                 </div>
@@ -433,10 +413,7 @@ export default function Step4Execution() {
           </div>
 
           {usageLog.length > 0 ? (
-            <div className="pt-2 border-t border-white/[0.06] space-y-1.5 max-h-36 overflow-y-auto">
-              <div className="font-mono text-[10px] text-zinc-500 uppercase">
-                Model Execution Log
-              </div>
+            <div className="pt-2 border-t border-white/[0.06] space-y-1 max-h-32 overflow-y-auto">
               {usageLog.map((log, idx) => (
                 <div
                   key={idx}
@@ -445,9 +422,7 @@ export default function Step4Execution() {
                   <span className="truncate">
                     {log.role} · <span className="text-zinc-200">{log.model}</span>
                   </span>
-                  <span className={`${theme.classes.draftTitle} shrink-0`}>
-                    {log.usage.total_tokens} tok
-                  </span>
+                  <span className="text-zinc-300 shrink-0">{log.usage.total_tokens} tok</span>
                 </div>
               ))}
             </div>
@@ -459,105 +434,86 @@ export default function Step4Execution() {
 
   const lineCount = generatedCode ? generatedCode.split("\n").length : 0;
   const byteSize = new Blob([generatedCode]).size;
+  const totalTokens = usageLog.reduce((acc, item) => acc + (item.usage?.total_tokens || 0), 0);
   const uniqueModelsUsed = Array.from(new Set(usageLog.map((u) => u.model)));
 
   return (
     <div className="flex flex-col h-full min-h-0 relative">
-      {/* Editor Primary Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-white/[0.08] bg-[#090b0f] shrink-0 z-10">
+      {/* Single Clean IDE Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-white/[0.07] bg-[#09090b] shrink-0 z-10">
         <div className="flex items-center gap-2.5 min-w-0">
-          <TechIcon iconKey={`target-${archetype}`} name={theme.name} size={15} />
-          <span className="font-mono text-xs text-zinc-200 truncate">{meta.filePath}</span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[10px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="font-mono text-xs text-zinc-100 truncate">{meta.filePath}</span>
+          <span className="px-1.5 py-0.5 rounded font-mono text-[10px] bg-zinc-900 text-zinc-300 border border-white/[0.08] shrink-0">
             {meta.badge}
           </span>
-          <span className="hidden md:inline font-mono text-[11px] text-zinc-400">
+          <span className="hidden md:inline font-mono text-[11px] text-zinc-500">
             {lineCount} lines · {(byteSize / 1024).toFixed(1)} KB
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Clean Typographic Model Switcher */}
+          <div className="hidden xl:flex items-center gap-0.5 bg-zinc-900/80 p-0.5 rounded-md border border-white/[0.07] mr-1">
+            {AI_MODEL_OPTIONS.map((m) => {
+              const isActive = selectedModel === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => handleRerunWithModel(m.id)}
+                  className={`px-2 py-0.5 rounded font-mono text-[10px] transition-colors ${
+                    isActive
+                      ? "bg-white/[0.12] text-white"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                  title={`Re-run with ${m.name}`}
+                >
+                  {m.shortName}
+                </button>
+              );
+            })}
+          </div>
+
           <button
             type="button"
             onClick={() => setIsEditable((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
               isEditable
-                ? theme.classes.platformActive
+                ? "bg-white/[0.1] border-white/[0.22] text-white"
                 : "bg-zinc-900 border-white/[0.08] text-zinc-400 hover:text-zinc-200"
             }`}
-            title={isEditable ? "Lock editor" : "Enable inline editing"}
           >
-            {isEditable ? <Pencil size={12} /> : <Lock size={12} />}
+            {isEditable ? <Pencil size={11} /> : <Lock size={11} />}
             <span>{isEditable ? "Editing" : "Read-Only"}</span>
           </button>
 
           <button
             type="button"
             onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] text-zinc-200 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] text-zinc-200 transition-colors"
           >
-            {copied ? (
-              <CheckCheck size={12} className="text-emerald-400" />
-            ) : (
-              <Copy size={12} />
-            )}
+            {copied ? <CheckCheck size={11} /> : <Copy size={11} />}
             <span>{copied ? "Copied" : "Copy"}</span>
           </button>
 
           <button
             type="button"
             onClick={handleDownload}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-colors ${theme.classes.primaryBtn}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold text-zinc-950 bg-zinc-100 hover:bg-white transition-colors"
           >
-            <Download size={12} />
+            <Download size={11} />
             <span>Download</span>
           </button>
 
           <button
             type="button"
             onClick={reset}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] transition-colors"
           >
-            <RotateCcw size={12} />
-            <span className="hidden sm:inline">New Build</span>
+            <RotateCcw size={11} />
+            <span className="hidden sm:inline">New</span>
           </button>
         </div>
-      </div>
-
-      {/* 1-Click Model Comparison / Re-Synthesize Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-1.5 border-b border-white/[0.06] bg-[#0b0d12] shrink-0">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] text-zinc-400 uppercase tracking-wider mr-1">
-            <Cpu size={11} className={theme.classes.iconActive} />
-            <span>Re-run with model:</span>
-          </span>
-          {AI_MODEL_OPTIONS.map((m) => {
-            const isActive = selectedModel === m.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => handleRerunWithModel(m.id)}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-                  isActive
-                    ? theme.classes.badge
-                    : "bg-zinc-900/70 border-white/[0.06] text-zinc-400 hover:text-zinc-100 hover:border-white/[0.15]"
-                }`}
-                title={`Re-run generation using ${m.name}`}
-              >
-                <TechIcon iconKey={m.iconKey} name={m.name} size={11} />
-                <span>{m.shortName}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {uniqueModelsUsed.length > 0 ? (
-          <span className="font-mono text-[10px] text-zinc-400">
-            Models used: <span className="text-zinc-200">{uniqueModelsUsed.join(" + ")}</span>
-          </span>
-        ) : null}
       </div>
 
       {/* Monaco Viewport */}
@@ -588,51 +544,54 @@ export default function Step4Execution() {
             theme="vs-dark"
             options={{
               readOnly: !isEditable,
-              minimap: { enabled: true },
+              minimap: { enabled: false },
               fontSize: 12.5,
               fontFamily: "var(--font-geist-mono), 'JetBrains Mono', monospace",
               wordWrap: "on",
               scrollBeyondLastLine: false,
+              scrollbar: {
+                alwaysConsumeMouseWheel: false,
+              },
               padding: { top: 16, bottom: 16 },
             }}
           />
         </div>
 
-        {/* Token Telemetry Bar */}
+        {/* Compact 1-Line Collapsible Status Footer */}
         {usageLog.length > 0 ? (
-          <div className="shrink-0 bg-[#090b0f] border-t border-white/[0.08] px-4 py-2.5 overflow-y-auto max-h-[115px]">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5">
-                <Activity size={12} className={theme.classes.iconActive} />
-                <span className="font-mono text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Execution Telemetry ({usageLog.length} stages)
-                </span>
-              </div>
-              <span className="font-mono text-[10px] text-zinc-400">
-                Total:{" "}
-                {usageLog.reduce((acc, item) => acc + (item.usage?.total_tokens || 0), 0)} tokens
+          <div className="shrink-0 bg-[#09090b] border-t border-white/[0.07] px-4 py-1.5">
+            <button
+              type="button"
+              onClick={() => setTelemetryExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between font-mono text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <span className="truncate">
+                Models: <span className="text-zinc-200">{uniqueModelsUsed.join(" · ")}</span>
               </span>
-            </div>
-            <div className="space-y-1">
-              {usageLog.map((log, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between font-mono text-[11px] bg-zinc-900/60 border border-white/[0.05] px-2.5 py-1 rounded"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-zinc-200 truncate">{log.role}</span>
-                    <span className="text-zinc-300 px-1.5 py-0.5 rounded bg-zinc-950 border border-white/[0.08]">
-                      {log.model}
+              <span className="inline-flex items-center gap-1.5 shrink-0">
+                <span>{totalTokens.toLocaleString()} tokens</span>
+                {telemetryExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+              </span>
+            </button>
+
+            {telemetryExpanded ? (
+              <div className="mt-2 pt-2 border-t border-white/[0.06] space-y-1 max-h-28 overflow-y-auto">
+                {usageLog.map((log, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between font-mono text-[11px] text-zinc-400"
+                  >
+                    <span className="truncate">
+                      {log.role} · <span className="text-zinc-200">{log.model}</span>
+                    </span>
+                    <span className="text-zinc-300 shrink-0">
+                      in:{log.usage.prompt_tokens} out:{log.usage.completion_tokens} (
+                      {log.usage.total_tokens} tok)
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-zinc-400 shrink-0">
-                    <span>in:{log.usage.prompt_tokens}</span>
-                    <span>out:{log.usage.completion_tokens}</span>
-                    <span className={theme.classes.draftTitle}>{log.usage.total_tokens} tok</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

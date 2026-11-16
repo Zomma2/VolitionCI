@@ -1,58 +1,53 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, ShieldCheck } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import logoImg from "../../../public/logo.png";
 
 export default function SiteFooter() {
   return (
-    <footer className="border-t border-white/[0.08] bg-[#07080a] text-zinc-400">
+    <footer className="border-t border-white/[0.07] bg-[#09090b] text-zinc-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-          {/* Brand & Engine Status */}
-          <div className="md:col-span-4 space-y-4">
+          {/* Brand */}
+          <div className="md:col-span-4 space-y-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-7 h-7 rounded-md bg-zinc-900 border border-white/[0.08]">
+              <div className="flex items-center justify-center w-6 h-6 rounded bg-zinc-900 border border-white/[0.08]">
                 <Image
                   src={logoImg}
                   alt="VolitionCI"
-                  width={18}
-                  height={18}
+                  width={15}
+                  height={15}
                   className="object-contain"
                 />
               </div>
               <span className="font-semibold text-sm text-zinc-100 tracking-tight">
-                Volition<span className="text-cyan-400">CI</span>
+                VolitionCI
               </span>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 border border-white/[0.08] text-zinc-400">
-                v0.4.2 Beta
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 border border-white/[0.07] text-zinc-400">
+                v0.4.2-beta
               </span>
             </div>
 
             <p className="text-xs text-zinc-400 leading-relaxed max-w-sm">
-              Web studio for drafting and validating CI/CD pipelines, Terraform HCL modules,
-              Kubernetes manifests, and Docker Compose files. Currently in public beta.
+              Configuration studio for generating and validating CI/CD workflows, Terraform HCL
+              modules, Kubernetes manifests, and Docker Compose files.
             </p>
-
-            <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-zinc-900/90 border border-white/[0.07] text-[11px] text-zinc-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="font-mono">Public Beta · Multi-Model Routing</span>
-            </div>
           </div>
 
-          {/* Platform Navigation */}
-          <div className="md:col-span-2 space-y-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
-              Platform
+          {/* Navigation */}
+          <div className="md:col-span-2 space-y-2.5">
+            <h3 className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+              Product
             </h3>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/#studio" className="hover:text-white transition-colors">
-                  Synthesis Studio
+                  Studio
                 </Link>
               </li>
               <li>
                 <Link href="/examples" className="hover:text-white transition-colors">
-                  Blueprints Library
+                  Templates
                 </Link>
               </li>
               <li>
@@ -62,16 +57,16 @@ export default function SiteFooter() {
               </li>
               <li>
                 <Link href="/changelog" className="hover:text-white transition-colors">
-                  Release Changelog
+                  Changelog
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Generation Targets */}
-          <div className="md:col-span-3 space-y-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
-              Generation Targets
+          {/* Targets */}
+          <div className="md:col-span-3 space-y-2.5">
+            <h3 className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+              Targets
             </h3>
             <ul className="space-y-2 text-xs">
               <li>
@@ -79,7 +74,7 @@ export default function SiteFooter() {
                   href="/?archetype=pipeline#studio"
                   className="hover:text-white transition-colors"
                 >
-                  CI/CD Pipelines (GitHub, GitLab, Jenkins)
+                  CI/CD Workflows
                 </Link>
               </li>
               <li>
@@ -87,7 +82,7 @@ export default function SiteFooter() {
                   href="/?archetype=terraform#studio"
                   className="hover:text-white transition-colors"
                 >
-                  Terraform HCL (AWS, GCP, Azure)
+                  Terraform HCL
                 </Link>
               </li>
               <li>
@@ -95,7 +90,7 @@ export default function SiteFooter() {
                   href="/?archetype=kubernetes#studio"
                   className="hover:text-white transition-colors"
                 >
-                  Kubernetes Manifests (EKS, GKE, AKS)
+                  Kubernetes Manifests
                 </Link>
               </li>
               <li>
@@ -103,36 +98,31 @@ export default function SiteFooter() {
                   href="/?archetype=docker#studio"
                   className="hover:text-white transition-colors"
                 >
-                  Docker Compose Topologies
+                  Docker Compose
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Architecture & Reference */}
-          <div className="md:col-span-3 space-y-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
-              Architecture &amp; Specs
+          {/* Reference */}
+          <div className="md:col-span-3 space-y-2.5">
+            <h3 className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+              Documentation
             </h3>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/docs#architecture" className="hover:text-white transition-colors">
-                  ReAct Planner-Worker Engine
+                  Pipeline Architecture
                 </Link>
               </li>
               <li>
                 <Link href="/docs#validation" className="hover:text-white transition-colors">
-                  YAML &amp; HCL Self-Healing Gate
+                  YAML &amp; HCL Validation
                 </Link>
               </li>
               <li>
                 <Link href="/docs#model-routing" className="hover:text-white transition-colors">
-                  Multi-Provider LLM Failover
-                </Link>
-              </li>
-              <li>
-                <Link href="/docs#api-reference" className="hover:text-white transition-colors">
-                  REST &amp; SSE Stream API
+                  Model Routing
                 </Link>
               </li>
               <li>
@@ -142,7 +132,7 @@ export default function SiteFooter() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 hover:text-white transition-colors"
                 >
-                  <span>Source Repository</span>
+                  <span>GitHub Repository</span>
                   <ArrowUpRight size={11} />
                 </a>
               </li>
@@ -150,24 +140,17 @@ export default function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-white/[0.06] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-[11px] text-zinc-500">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            <span>&copy; {new Date().getFullYear()} VolitionCI. Open-source DevSecOps platform.</span>
-            <span className="hidden sm:inline text-zinc-700">|</span>
-            <span className="inline-flex items-center gap-1.5 text-zinc-400">
-              <ShieldCheck size={12} className="text-cyan-400" />
-              Zero-Trust OIDC &amp; Least-Privilege Baselines
-            </span>
-          </div>
+        <div className="mt-10 pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-zinc-500">
+          <div>&copy; {new Date().getFullYear()} VolitionCI · Public Beta</div>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-            <span className="text-zinc-300 font-medium">Designed by Omar Hazem</span>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span className="text-zinc-300">Designed by Omar Hazem</span>
             <span className="text-zinc-700">·</span>
             <a
               href="https://meetomarhazem.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-[11px] px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-white/[0.09] hover:border-cyan-400/40 text-cyan-300 hover:text-cyan-200 transition-colors"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-zinc-200 hover:text-white transition-colors"
             >
               <span>meetomarhazem.com</span>
               <ArrowUpRight size={11} />
